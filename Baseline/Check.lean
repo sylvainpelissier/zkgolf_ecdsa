@@ -57,6 +57,31 @@ def accepts (input : Input FF) : Bool :=
     | .assert e => e.eval env == 0
     | _ => true
 
+/-- Does the `< n` check accept the 256-bit value `v` (bits supplied as inputs)? -/
+def rangeAccepts (v : ℕ) : Bool :=
+  let bits : Vector (Vector E 3) 256 := Vector.ofFn fun i => #v[0, .var ⟨i.val⟩, 0]
+  let c := ltOrder bits 1
+  let w := Circuit.witgen c default ((List.range 256).toArray.map fun i =>
+    (((v >>> (255 - i)) % 2 : ℕ) : FF))
+  let env := (ProverEnvironment.fromArray w default).toEnvironment
+  ((c.operations 256).toFlat).all fun
+    | .assert e => e.eval env == 0
+    | _ => true
+
+/-- Boundary, bit-transition and pseudo-random values against integer `< n`. -/
+def rangeFailures : List ℕ := Id.run do
+  let lim := 2 ^ 256
+  let mut cases : Array ℕ := #[0, 1, n - 1, n, n + 1, lim - 1]
+  for k in [0:256] do
+    let hi := (n / 2 ^ k) * 2 ^ k
+    cases := cases ++ #[2 ^ k - 1, 2 ^ k, hi - 1, hi, hi + 1, (n + 2 ^ k) % lim, n - 2 ^ k,
+      (hi + 2 ^ k - 1) % lim]
+  let mut seed := 1
+  for _ in [0:256] do
+    seed := (seed * 6364136223846793005 + 1442695040888963407) % lim
+    cases := cases.push seed
+  return cases.toList.filter fun v => rangeAccepts v != decide (v < n)
+
 def unhexNat (s : String) : ℕ :=
   s.foldl (fun a c => 16 * a + (if c ≤ '9' then c.toNat - '0'.toNat else c.toNat - 'a'.toNat + 10)) 0
 
@@ -91,6 +116,10 @@ def main : IO UInt32 := do
         if accepts bad then
           failures := failures + 1
           IO.eprintln s!"accepted tampered witness: {name}"
+  let bad := rangeFailures
+  for v in bad.take 5 do
+    IO.eprintln s!"range check disagrees with < n at {v}"
+  failures := failures + bad.length
   IO.println s!"baseline circuit: {checked} valid source witnesses checked, {failures} failures"
   return if failures == 0 && checked > 0 then 0 else 1
 
