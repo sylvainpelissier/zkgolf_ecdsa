@@ -10,3 +10,8 @@ lean_lib Tests
 
 lean_lib ECDSA where
   srcDir := "vendor/longfellow"
+
+lean_lib Baseline
+
+lean_exe baselineCheck where
+  root := `Baseline.Check
