@@ -15,3 +15,5 @@ lean_lib Baseline
 
 lean_exe baselineCheck where
   root := `Baseline.Check
+
+lean_lib Solution
