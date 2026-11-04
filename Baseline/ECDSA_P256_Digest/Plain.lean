@@ -1,0 +1,257 @@
+import Baseline.ECDSA_P256_Digest.Circuit
+import Challenge.Utils.CostR1CS
+
+/-!
+The circuit uses only witness and assert operations: no lookups, channel interactions
+or subcircuits (`PlainOps`). This gives the structural side conditions at once:
+`localLength` equals the counted allocations, subcircuits are consistent, and both
+channel-lawfulness obligations hold with empty channel lists.
+
+`PlainCirc` is walked like `IsR1CSCirc` in `R1CS.lean`, one lemma per gadget.
+-/
+
+namespace Baseline.ECDSA_P256_Digest
+
+open Challenge.CostR1CS
+open Challenge.Instances.ECDSA_P256_Digest.Interface
+
+/-- Every operation is a witness or an assert. -/
+def PlainOps : Operations FF → Prop
+  | [] => True
+  | .witness _ _ :: ops => PlainOps ops
+  | .assert _ :: ops => PlainOps ops
+  | .lookup _ :: _ | .interact _ :: _ | .subcircuit _ :: _ => False
+
+theorem plainOps_append (a b : Operations FF) :
+    PlainOps (a ++ b) ↔ PlainOps a ∧ PlainOps b := by
+  induction a using Operations.induct with
+  | empty => simp [PlainOps]
+  | witness _ _ _ ih | assert _ _ ih => simpa [PlainOps] using ih
+  | lookup | interact | subcircuit => simp [PlainOps]
+
+theorem plainOps_flatten_ofFn {m : ℕ} (g : Fin m → Operations FF) (h : ∀ i, PlainOps (g i)) :
+    PlainOps (List.ofFn g).flatten := by
+  induction m with
+  | zero => simp [List.ofFn_zero, List.flatten_nil, PlainOps]
+  | succ k ih =>
+      rw [List.ofFn_succ, List.flatten_cons, plainOps_append]
+      exact ⟨h 0, ih (fun i => g i.succ) (fun i => h i.succ)⟩
+
+/-! ## Consequences -/
+
+namespace PlainOps
+
+theorem localLength {ops : Operations FF} (h : PlainOps ops) :
+    ops.localLength = (operationCount ops).allocations := by
+  induction ops using Operations.induct with
+  | empty => rfl
+  | witness m _ _ ih | assert _ _ ih =>
+      simp only [PlainOps] at h
+      simp [Operations.localLength, operationCount, flatOperationCount, ih h]
+  | lookup | interact | subcircuit => exact h.elim
+
+theorem subcircuitsConsistent {ops : Operations FF} (h : PlainOps ops) (n : ℕ) :
+    ops.SubcircuitsConsistent n := by
+  induction ops using Operations.induct generalizing n with
+  | empty => trivial
+  | witness _ _ _ ih | assert _ _ ih =>
+      simp only [PlainOps] at h
+      exact ⟨trivial, ih h _⟩
+  | lookup | interact | subcircuit => exact h.elim
+
+theorem subcircuitChannelsWithGuarantees_eq {ops : Operations FF} (h : PlainOps ops) :
+    ops.subcircuitChannelsWithGuarantees = [] := by
+  induction ops using Operations.induct with
+  | empty => rfl
+  | witness _ _ _ ih | assert _ _ ih =>
+      simp only [PlainOps] at h
+      simpa [Operations.subcircuitChannelsWithGuarantees] using ih h
+  | lookup | interact | subcircuit => exact h.elim
+
+theorem subcircuitChannelsWithRequirements_eq {ops : Operations FF} (h : PlainOps ops) :
+    ops.subcircuitChannelsWithRequirements = [] := by
+  induction ops using Operations.induct with
+  | empty => rfl
+  | witness _ _ _ ih | assert _ _ ih =>
+      simp only [PlainOps] at h
+      simpa [Operations.subcircuitChannelsWithRequirements] using ih h
+  | lookup | interact | subcircuit => exact h.elim
+
+theorem shallowChannels_eq {ops : Operations FF} (h : PlainOps ops) :
+    ops.shallowChannels = [] := by
+  induction ops using Operations.induct with
+  | empty => rfl
+  | witness _ _ _ ih | assert _ _ ih =>
+      simp only [PlainOps] at h
+      simpa [circuit_norm] using ih h
+  | lookup | interact | subcircuit => exact h.elim
+
+theorem inChannelsOrGuarantees {ops : Operations FF} (h : PlainOps ops)
+    (channels : List (RawChannel FF)) (env : Environment FF) :
+    ops.InChannelsOrGuarantees channels env := by
+  induction ops using Operations.induct with
+  | empty => trivial
+  | witness _ _ _ ih | assert _ _ ih =>
+      simp only [PlainOps] at h
+      exact ⟨trivial, ih h⟩
+  | lookup | interact | subcircuit => exact h.elim
+
+theorem inChannelsOrRequirements {ops : Operations FF} (h : PlainOps ops)
+    (channels : List (RawChannel FF)) (env : Environment FF) :
+    ops.InChannelsOrRequirements channels env := by
+  induction ops using Operations.induct with
+  | empty => trivial
+  | witness _ _ _ ih | assert _ _ ih =>
+      simp only [PlainOps] at h
+      exact ⟨trivial, ih h⟩
+  | lookup | interact | subcircuit => exact h.elim
+
+theorem subcircuitChannelsLawful {ops : Operations FF} (h : PlainOps ops) :
+    ops.SubcircuitChannelsLawful := by
+  induction ops using Operations.induct with
+  | empty => simp [Operations.SubcircuitChannelsLawful, Operations.subcircuits]
+  | witness _ _ _ ih | assert _ _ ih =>
+      simp only [PlainOps] at h
+      simpa [Operations.SubcircuitChannelsLawful, Operations.subcircuits] using ih h
+  | lookup | interact | subcircuit => exact h.elim
+
+theorem channelsLawful {ops : Operations FF} (h : PlainOps ops) : ops.ChannelsLawful [] :=
+  ⟨by simp [h.subcircuitChannelsWithGuarantees_eq], fun env => h.inChannelsOrGuarantees _ env,
+    h.subcircuitChannelsLawful⟩
+
+theorem requirementsChannelsLawful {ops : Operations FF} (h : PlainOps ops) :
+    ops.RequirementsChannelsLawful [] [] :=
+  ⟨by simp [h.subcircuitChannelsWithRequirements_eq], by simp [h.shallowChannels_eq],
+    fun env _ => h.inChannelsOrRequirements _ env⟩
+
+end PlainOps
+
+/-! ## Circuit combinators -/
+
+/-- `c`'s operations are plain at every offset. A structure, so that `apply` in the
+`plain` tactic cannot unfold it and match the wrong goal. -/
+structure PlainCirc {α : Type} (c : Circuit FF α) : Prop where
+  ops : ∀ n, PlainOps (c.operations n)
+
+namespace PlainCirc
+
+variable {α β : Type}
+
+theorem pure (a : α) : PlainCirc (pure a : Circuit FF α) :=
+  ⟨fun n => by rw [Circuit.pure_operations_eq]; trivial⟩
+
+theorem bind {f : Circuit FF α} {g : α → Circuit FF β}
+    (hf : PlainCirc f) (hg : ∀ a, PlainCirc (g a)) : PlainCirc (f >>= g) :=
+  ⟨fun n => by
+    rw [Circuit.bind_operations_eq, plainOps_append]
+    exact ⟨hf.ops n, (hg _).ops _⟩⟩
+
+theorem map {f : Circuit FF α} {g : α → β} (hf : PlainCirc f) : PlainCirc (g <$> f) :=
+  ⟨fun n => by rw [Circuit.map_operations_eq]; exact hf.ops n⟩
+
+theorem witnessField (e : Witgen.FExpr FF) : PlainCirc (Circuit.witnessField e) :=
+  ⟨fun _ => trivial⟩
+
+theorem witnessVector (m : ℕ) (out : Witgen.VExpr FF m) :
+    PlainCirc (Circuit.witnessVector m out) :=
+  ⟨fun _ => trivial⟩
+
+theorem assertZero (e : E) : PlainCirc (Circuit.assertZero e) :=
+  ⟨fun _ => trivial⟩
+
+theorem forEach {m : ℕ} [Inhabited α] {xs : Vector α m} {body : α → Circuit FF Unit}
+    {constant : Circuit.ConstantLength body} (h : ∀ a, PlainCirc (body a)) :
+    PlainCirc (Circuit.forEach xs body constant) :=
+  ⟨fun n => by
+    rw [Circuit.forEach.operations_eq]
+    exact plainOps_flatten_ofFn _ (fun i => (h _).ops _)⟩
+
+theorem mapFinRange {m : ℕ} [NeZero m] {body : Fin m → Circuit FF β}
+    {constant : Circuit.ConstantLength body} (h : ∀ i, PlainCirc (body i)) :
+    PlainCirc (Circuit.mapFinRange m body constant) :=
+  ⟨fun n => by
+    rw [Circuit.mapFinRange.operations_eq]
+    exact plainOps_flatten_ofFn _ (fun i => (h _).ops _)⟩
+
+end PlainCirc
+
+/-- Close a `PlainCirc` goal by walking binds down to witnesses, asserts and `lemmas`. -/
+macro "plain" "[" lemmas:term,* "]" : tactic => `(tactic| ((try dsimp only); repeat' (first
+  | apply PlainCirc.bind
+  | apply PlainCirc.map
+  | apply PlainCirc.pure
+  | apply PlainCirc.witnessField
+  | apply PlainCirc.witnessVector
+  | apply PlainCirc.assertZero
+  $[| apply $lemmas:term]*
+  | intro _)))
+
+/-! ## Gadgets -/
+
+theorem mul_plain (x y : E) : PlainCirc (mul x y) := by unfold mul; plain []
+theorem mux_plain (b a c : E) : PlainCirc (mux b a c) := by unfold mux; plain []
+
+attribute [local irreducible] mul mux
+
+theorem assertQuad_plain (q : Quad) (t : E) : PlainCirc (assertQuad q t) := by
+  unfold assertQuad; plain [mul_plain]
+theorem matQuad_plain (q : Quad) : PlainCirc (matQuad q) := by
+  unfold matQuad; plain [mul_plain]
+theorem mux8_plain (b : Vector E 3) (c0 c1 : FF) (t : Vector E 6) : PlainCirc (mux8 b c0 c1 t) := by
+  unfold mux8; plain [mux_plain]
+
+attribute [local irreducible] assertQuad matQuad mux8
+
+theorem matPoint_plain (q : QPoint) : PlainCirc (matPoint q) := by
+  unfold matPoint; plain [matQuad_plain]
+theorem selectPoint_plain (b : Vector E 3) (xs ys : Vector E 6) :
+    PlainCirc (selectPoint b xs ys) := by
+  unfold selectPoint; plain [mux8_plain, mul_plain]
+theorem addE_plain (p1 p2 : P3) : PlainCirc (addE p1 p2) := by
+  unfold addE; plain [mul_plain]
+theorem addAff_plain (p q : E × E) : PlainCirc (addAff p q) := by
+  unfold addAff; plain [mul_plain]
+theorem doubleE_plain (p : P3) : PlainCirc (doubleE p) := by
+  unfold doubleE; plain [mul_plain]
+theorem bits3_plain (v : E) : PlainCirc (bits3 v) := by unfold bits3; plain []
+theorem pointEq_plain (p : P3) (x y : E) : PlainCirc (pointEq p x y) := by
+  unfold pointEq; plain []
+theorem onCurve_plain (x y : E) : PlainCirc (onCurve x y) := by
+  unfold onCurve; plain [mul_plain]
+theorem inverse_plain (x inv : E) : PlainCirc (inverse x inv) := by unfold inverse; plain []
+theorem runCheck_plain (bits : Vector (Vector E 3) 256) (k : Fin 3) (r : ℕ × ℕ) :
+    PlainCirc (runCheck bits k r) := by
+  unfold runCheck; plain []
+theorem assertFirst_plain (t : P3) (x y z : E) : PlainCirc (assertFirst t x y z) := by
+  unfold assertFirst; plain []
+
+attribute [local irreducible] matPoint selectPoint addE addAff doubleE bits3 pointEq onCurve inverse
+  runCheck assertFirst
+
+theorem assertPoint_plain (q : QPoint) (x y z : E) : PlainCirc (assertPoint q x y z) := by
+  unfold assertPoint; plain [assertQuad_plain]
+theorem step_plain (acc : P3) (b : Vector E 3) (xs ys : Vector E 6) :
+    PlainCirc (step acc b xs ys) := by
+  unfold step; plain [doubleE_plain, selectPoint_plain, addE_plain]
+theorem selectors_plain (bi : Vector E 256) : PlainCirc (selectors bi) :=
+  PlainCirc.mapFinRange fun _ => bits3_plain _
+theorem ltOrder_plain (bits : Vector (Vector E 3) 256) (k : Fin 3) : PlainCirc (ltOrder bits k) :=
+  PlainCirc.forEach fun _ => runCheck_plain _ _ _
+
+attribute [local irreducible] assertPoint step selectors ltOrder
+
+theorem middle_plain (input : Var Input FF) (bits : Vector (Vector E 3) 256) (xs ys : Vector E 6) :
+    PlainCirc (middle input bits xs ys) :=
+  PlainCirc.forEach fun _ => PlainCirc.bind (step_plain _ _ _ _) fun _ => assertPoint_plain _ _ _ _
+
+attribute [local irreducible] middle
+
+-- The flattened `main` is deep enough to need a larger recursion budget.
+set_option maxRecDepth 100000 in
+theorem main_plain (input : Var Input FF) : PlainCirc (main input) := by
+  unfold main
+  plain [matPoint_plain, pointEq_plain, addAff_plain, selectors_plain, selectPoint_plain,
+    assertFirst_plain, middle_plain, step_plain, assertQuad_plain, onCurve_plain, inverse_plain,
+    ltOrder_plain]
+
+end Baseline.ECDSA_P256_Digest
