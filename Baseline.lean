@@ -9,3 +9,5 @@ import Baseline.ECDSA_P256_Digest.Soundness.Curve
 import Baseline.ECDSA_P256_Digest.Soundness.Range
 import Baseline.ECDSA_P256_Digest.Soundness.Input
 import Baseline.ECDSA_P256_Digest.Soundness.Scalar
+import Baseline.ECDSA_P256_Digest.Soundness.Step
+import Baseline.ECDSA_P256_Digest.Soundness.Table
