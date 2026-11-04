@@ -1,4 +1,5 @@
 import Baseline.ECDSA_P256_Digest.Circuit
+import Baseline.ECDSA_P256_Digest.Seal
 
 /-!
 Soundness of the `< n` range check (`ltOrder`): when its rows hold on boolean bits,
@@ -13,6 +14,8 @@ spell `n - 1` and that `zeroRuns` covers its zero bits, both checked by `decide`
 -/
 
 namespace Baseline.ECDSA_P256_Digest
+
+seal_gadgets
 
 open Challenge.Instances.ECDSA_P256_Digest.Interface
 
@@ -165,8 +168,6 @@ theorem bitNat_le_one {env : Environment FF} {bits : Vector (Vector E 3) 256} {k
   · rw [h0, ZMod.val_zero]; exact Nat.zero_le _
   · rw [h1, ZMod.val_one_eq_one_mod]; exact Nat.mod_le _ _
 
--- The linter times out on the 34-run hypothesis; it reports nothing here.
-set_option linter.constructorNameAsVariable false in
 /-- Soundness of the range check: boolean bits satisfying the `ltOrder` rows spell at most
 `n - 1`, most significant bit first. -/
 theorem ltOrder_sound {env : Environment FF} {bits : Vector (Vector E 3) 256} {k : Fin 3}

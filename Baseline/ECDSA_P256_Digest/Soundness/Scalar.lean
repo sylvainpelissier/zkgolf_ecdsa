@@ -1,6 +1,7 @@
 import Baseline.ECDSA_P256_Digest.Soundness.Gadgets
 import Baseline.ECDSA_P256_Digest.Soundness.Range
 import Baseline.ECDSA_P256_Digest.Soundness.Input
+import Baseline.ECDSA_P256_Digest.Seal
 
 /-!
 Soundness of the scalar side of the spec (tasks S1–S4): list lengths, selector values in
@@ -13,6 +14,8 @@ bounds, so the spec's `reconstructE/R/S` and `natR/natS` all reduce to it.
 -/
 
 namespace Baseline.ECDSA_P256_Digest
+
+seal_gadgets
 
 open Challenge.Instances.ECDSA_P256_Digest.Interface
 
@@ -251,10 +254,6 @@ theorem scalar_spec (input : Input FF) (b : Fin 256 → Fin 3 → ℕ) (hb : ∀
   · exact hpk
   · show natR bi_nat < n; rw [show natR bi_nat = _ from hR']; omega
   · show natS bi_nat < n; rw [show natS bi_nat = _ from hS']; omega
-
--- Keep the gadgets folded: `whnf` on their constraint hypotheses would otherwise unfold
--- 34 range runs of 256-term sums.
-attribute [local irreducible] ltOrder selectors bits3 onCurve inverse recompose
 
 open Challenge.Specs.ECDSAP256 in
 /-- The scalar conjuncts of the spec from the circuit's scalar gadgets: the selector

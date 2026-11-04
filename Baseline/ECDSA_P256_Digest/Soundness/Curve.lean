@@ -1,4 +1,5 @@
 import Baseline.ECDSA_P256_Digest.Circuit
+import Baseline.ECDSA_P256_Digest.Seal
 
 /-!
 Soundness of the point gadgets: when their constraints hold, `doubleE` and `addE`
@@ -11,6 +12,8 @@ outputs with these rows (latest first) leaves a polynomial identity.
 -/
 
 namespace Baseline.ECDSA_P256_Digest
+
+seal_gadgets
 
 open Challenge.Specs.ECDSAP256 (params)
 
