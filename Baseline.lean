@@ -3,5 +3,9 @@ import Baseline.ECDSA_P256_Digest.Cost
 import Baseline.ECDSA_P256_Digest.R1CS
 import Baseline.ECDSA_P256_Digest.Plain
 import Baseline.ECDSA_P256_Digest.Elaborated
+import Baseline.ECDSA_P256_Digest.CompWit
 import Baseline.ECDSA_P256_Digest.Soundness.Gadgets
 import Baseline.ECDSA_P256_Digest.Soundness.Curve
+import Baseline.ECDSA_P256_Digest.Soundness.Range
+import Baseline.ECDSA_P256_Digest.Soundness.Input
+import Baseline.ECDSA_P256_Digest.Soundness.Scalar

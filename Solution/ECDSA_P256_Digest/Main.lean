@@ -6,6 +6,7 @@ import Challenge.Instances.ECDSA_P256_Digest.Interface
 import Challenge.Instances.ECDSA_P256_Digest.Cost
 import Baseline.ECDSA_P256_Digest.Elaborated
 import Baseline.ECDSA_P256_Digest.R1CS
+import Baseline.ECDSA_P256_Digest.CompWit
 
 /-!
 Submission module (`solution_module` of `configs/ECDSA_P256_Digest.json`): the
@@ -32,11 +33,14 @@ theorem completeness : GeneralFormalCircuit.Completeness (F circuitPrime) main P
 theorem mainCost : Challenge.CostR1CS.circuitCost main ⟨allocations, constraints⟩ :=
   Baseline.ECDSA_P256_Digest.mainCost
 theorem isR1CS : Challenge.CostR1CS.isR1CS main := Baseline.ECDSA_P256_Digest.isR1CS_main
-theorem witgenIsIR : Challenge.WitgenIR.witgenIsIR main := sorry
+theorem witgenIsIR : Challenge.WitgenIR.witgenIsIR main :=
+  fun input n => ((Baseline.ECDSA_P256_Digest.main_plain input).ops n).usesIR
 
 theorem computableWitness : ∀ n input,
   ProverEnvironment.OnlyAccessedBelow n (fun env : ProverEnvironment (F circuitPrime) => eval env input) →
-  Circuit.ComputableWitnesses (main input) n := sorry
+  Circuit.ComputableWitnesses (main input) n :=
+  fun n input h => Baseline.ECDSA_P256_Digest.main_cw input n
+    (Baseline.ECDSA_P256_Digest.inputBelow (Baseline.ECDSA_P256_Digest.below_toElements h))
 
 theorem requirementsChannelsLawful : ∀ input offset,
   ((main input).operations offset).RequirementsChannelsLawful
