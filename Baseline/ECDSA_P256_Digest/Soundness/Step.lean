@@ -3,7 +3,7 @@ import Baseline.ECDSA_P256_Digest.Soundness.Scalar
 import Baseline.ECDSA_P256_Digest.Seal
 
 /-!
-Soundness of one loop iteration (tasks S6 and S7).
+Soundness of loop iterations (tasks S6, S7 and the first step of S8).
 
 * `selectPoint_sound`: with boolean selector bits, the selected point is the spec's
   `muxPointF v` on the evaluated table, `v = b0 + 2 b1 + 4 b2`.
@@ -11,6 +11,7 @@ Soundness of one loop iteration (tasks S6 and S7).
   `addE (doubleE acc) T`, left as pending quadratics.
 * `stepRow_sound`: with the `int[i+1]` check (`assertPoint`), this is exactly the spec's
   loop equation `nextAcc = int[i+1]`.
+* `assertFirst_sound`: the first iteration is addition from infinity, without doubling.
 -/
 
 namespace Baseline.ECDSA_P256_Digest
@@ -117,5 +118,15 @@ theorem stepRow_sound {env : Environment FF} {acc : P3} {b : Vector E 3} {xs ys 
       ⟨Expression.eval env x, Expression.eval env y, Expression.eval env z⟩ := by
   rw [soundness_bind] at h
   rw [← step_sound h.1 hb0 hb1 hb2, assertPoint_sound h.2]
+
+/-- The first iteration's asserted coordinates equal addition from infinity. -/
+theorem assertFirst_sound {env : Environment FF} {selected : P3} {nextX nextY nextZ : E}
+    {offset : ℕ}
+    (hfirst : ConstraintsHold.Soundness env ((assertFirst selected nextX nextY nextZ).operations offset)) :
+    _root_.addE infinityPoint (evalP env selected) params =
+      ⟨Expression.eval env nextX, Expression.eval env nextY, Expression.eval env nextZ⟩ := by
+  simp only [assertFirst, circuit_norm, sub_eq_zero] at hfirst
+  obtain ⟨hx, hy, hz⟩ := hfirst
+  simp [_root_.addE, infinityPoint, evalP, hx, hy, hz, mul_comm]
 
 end Baseline.ECDSA_P256_Digest

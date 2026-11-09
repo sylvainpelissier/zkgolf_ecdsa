@@ -7,6 +7,7 @@ import Challenge.Instances.ECDSA_P256_Digest.Cost
 import Baseline.ECDSA_P256_Digest.Elaborated
 import Baseline.ECDSA_P256_Digest.R1CS
 import Baseline.ECDSA_P256_Digest.CompWit
+import Baseline.ECDSA_P256_Digest.Soundness.Main
 
 /-!
 Submission module (`solution_module` of `configs/ECDSA_P256_Digest.json`): the
@@ -27,7 +28,8 @@ def main : Var Input (F circuitPrime) → Circuit (F circuitPrime) (Var Output (
 instance elaborated : ElaboratedCircuit (F circuitPrime) Input Output main :=
   Baseline.ECDSA_P256_Digest.elaborated
 
-theorem soundness : GeneralFormalCircuit.Soundness (F circuitPrime) main Assumptions Spec := sorry
+theorem soundness : GeneralFormalCircuit.Soundness (F circuitPrime) main Assumptions Spec :=
+  Baseline.ECDSA_P256_Digest.main_soundness
 theorem completeness : GeneralFormalCircuit.Completeness (F circuitPrime) main ProverAssumptions ProverSpec := sorry
 
 theorem mainCost : Challenge.CostR1CS.circuitCost main ⟨allocations, constraints⟩ :=

@@ -23,8 +23,9 @@ External byte vectors remain test adapters: they generate source witnesses and
 compare the Lean arithmetic path, RustCrypto and actual C++ constraint evaluator.
 Their encoding rejection cases are not constraints of the native challenge.
 
-This package defines a single signature-component optimization challenge; no
-contestant circuit or measured baseline is supplied. See
+This package defines a single signature-component optimization challenge and
+includes an in-progress R1CS submission. The challenge metadata has no official
+baseline score; the local submission's proved cost is recorded below. See
 [validation](docs/validation.md), [provenance](docs/references.md), and
 [handoff](docs/publication.md).
 
@@ -32,7 +33,8 @@ contestant circuit or measured baseline is supplied. See
 
 The submission module is [`Solution/ECDSA_P256_Digest/Main.lean`](Solution/ECDSA_P256_Digest/Main.lean).
 It re-exports the circuit and proofs in [`Baseline/ECDSA_P256_Digest/`](Baseline/ECDSA_P256_Digest/).
-The circuit scores 19,630: 9,296 allocations and 10,334 constraints.
+The circuit's proved cost is 19,630: 9,296 allocations and 10,334 constraints.
+This is not yet a comparator-accepted submission: completeness remains unfinished.
 
 | Obligation | Status | Proof |
 | --- | --- | --- |
@@ -41,13 +43,18 @@ The circuit scores 19,630: 9,296 allocations and 10,334 constraints.
 | `witgenIsIR` | done | [`Plain.lean`](Baseline/ECDSA_P256_Digest/Plain.lean) |
 | `requirementsChannelsLawful` | done | [`Plain.lean`](Baseline/ECDSA_P256_Digest/Plain.lean) |
 | `computableWitness` | done | [`CompWit.lean`](Baseline/ECDSA_P256_Digest/CompWit.lean) |
-| `soundness` | in progress | [`Soundness/`](Baseline/ECDSA_P256_Digest/Soundness/) |
+| `soundness` | done | [`Soundness/Main.lean`](Baseline/ECDSA_P256_Digest/Soundness/Main.lean) |
 | `completeness` | not started | — |
 
-The comparator accepts the statements. It currently stops at `sorryAx`, which comes from the
-two unfinished obligations.
+The circuit and trusted statements are unchanged by the soundness work. Among the
+submission obligations, only completeness still uses `sorryAx`. The exported
+soundness theorem is audited in [Tests/Axioms.lean](Tests/Axioms.lean) and uses
+only `propext`, `Classical.choice`, and `Quot.sound`.
 
 ### Soundness
+
+See the [detailed soundness summary](docs/soundness.md) for the proof structure,
+the completed loop and assembly work, and validation scope.
 
 Done, one file per part of `ValidEcdsaWitness`:
 
@@ -64,21 +71,12 @@ Done, one file per part of `ValidEcdsaWitness`:
   `muxPointF`, and one loop step with its `int[i+1]` check is the spec's step equation (`stepRow_sound`).
 - [`Table.lean`](Baseline/ECDSA_P256_Digest/Soundness/Table.lean) (S5): the precomputed table is
   `ValidPreComputationExact` (`table_sound`).
-
-Remaining:
-
-- **S8, the loop.**
-  - Prove a list lemma: `EcdsaLoopConstraintsF` from infinity holds exactly when the first step
-    and every middle step hold.
-  - Discharge the first step with `assertFirst`, since `addE (0, 1, 0) T` reduces to `(x·y, y², y·z)`.
-  - Discharge the 254 middle steps with `stepRow_sound`, over the `forEach` in `middle`.
-  - Discharge the last step and the final `X = 0`, `Z = 0` from `ecdsaLoopResultF`.
-  - The vendored `EcdsaLoopConstraintsF_cast_eq` / `ecdsaLoopResultF_cast_eq` may help.
-- **S10, assembly.**
-  - Split `main`'s constraints with `soundness_bind`.
-  - Feed the pieces to `scalar_spec_circuit`, `table_sound` and S8.
-  - Rewrite `tablePK`, `tablePre` and `preList` into the input's fields with `InputEval`.
-  - Prove `Solution.soundness` by unfolding `GeneralFormalCircuit.Soundness`.
+- [`Loop.lean`](Baseline/ECDSA_P256_Digest/Soundness/Loop.lean) (S8): the first and 254 middle
+  transitions imply the supplied-witness loop predicate (`loopConstraints_sound`); the last
+  transition proves the final `X = 0`, `Z = 0` checks (`loopResult_sound`).
+- [`Main.lean`](Baseline/ECDSA_P256_Digest/Soundness/Main.lean) (S10): combines the scalar,
+  table and loop results, rewrites evaluated inputs with `InputEval`, and discharges
+  external requirements using `PlainOps` (`main_soundness`). The submission exports this proof.
 
 ### Completeness
 
@@ -93,11 +91,48 @@ the soundness algebra in the other direction:
   satisfied. This also needs a `decide +kernel` fact that the runs contain only zero bits of `n − 1`.
 - **C5, inverses and curve checks:** these come directly from the spec.
 
-### Final validation
+### Validation
+
+Run `scripts/check.sh` for source-integrity checks, deterministic vector import,
+the Lean build, regressions, the permitted-axiom audit, and Lean/Rust vector checks.
+It builds `Tests.Axioms` and its submission dependencies before auditing them;
+the default `lake build` alone does not build the submission.
+
+For a focused soundness check:
+
+```sh
+lake build Solution.ECDSA_P256_Digest.Main Tests.Axioms
+python3 scripts/check_axioms.py
+```
+
+The final local review passed `scripts/check.sh`, including all five axiom-audit
+roots and the 276-case vector suites. The warning on the unfinished completeness
+theorem is expected; the soundness theorem has no `sorryAx` dependency.
+
+Full submission acceptance remains pending:
 
 - Run the comparator on `configs/ECDSA_P256_Digest.json` until it prints "Your solution is okay!".
 - Check that the full build stays within the 1200 s verifier limit.
 - Cross-check against Longfellow with `scripts/check_cpp.py`.
+
+`scripts/check_comparator.py` checks positive/negative integration fixtures, not
+acceptance of the actual submission. Neither the external C++ check nor full
+comparator acceptance was rerun for the soundness-only review.
+
+### Optimization follow-up
+
+Keep circuit changes separate from the soundness milestone and finish completeness
+before changing the accepted relation's implementation. Any cost reduction must
+preserve every supplied-witness check and re-establish the affected proof obligations.
+
+The proved `middle_count` in [Cost.lean](Baseline/ECDSA_P256_Digest/Cost.lean)
+accounts for 8,636 allocations and 9,398 constraints: 18,034 of the 19,630 score
+units, about 92%. These 254 iterations are the main target for future circuit
+optimization; this breakdown does not establish that any checks can be removed.
+
+The proof already avoids unrolling the loop through indexed induction and sealed
+gadgets. Retain the bidirectional `loopConstraints_iff_rows` lemma for completeness;
+further proof simplification should be guided by measured elaboration costs.
 
 ### Conventions for proof files
 
