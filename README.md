@@ -44,7 +44,7 @@ This is not yet a comparator-accepted submission: completeness remains unfinishe
 | `requirementsChannelsLawful` | done | [`Plain.lean`](Baseline/ECDSA_P256_Digest/Plain.lean) |
 | `computableWitness` | done | [`CompWit.lean`](Baseline/ECDSA_P256_Digest/CompWit.lean) |
 | `soundness` | done | [`Soundness/Main.lean`](Baseline/ECDSA_P256_Digest/Soundness/Main.lean) |
-| `completeness` | not started | — |
+| `completeness` | in progress | [Progress and remaining assembly](docs/completeness.md) |
 
 The circuit and trusted statements are unchanged by the soundness work. Among the
 submission obligations, only completeness still uses `sorryAx`. The exported
@@ -80,16 +80,42 @@ Done, one file per part of `ValidEcdsaWitness`:
 
 ### Completeness
 
-Not started. The honest prover's witnesses must satisfy every constraint. Most of it reuses
-the soundness algebra in the other direction:
+In progress. The honest prover's actual witness generators must satisfy every constraint.
+The exported completeness theorem remains unfinished.
 
-- **C1, product gadgets:** `mul`, `mux`, `matQuad` and `assertQuad` follow directly from their
-  witness generators.
-- **C2, `bits3`:** for `bi ∈ 0..7`, the generator's `v.bits 2` gives the right bits.
-- **C3, loop and table:** the identities of S5–S7, read the other way.
-- **C4, `runCheck`:** needs the converse of S9: if the scalar is below `n`, every run check can be
-  satisfied. This also needs a `decide +kernel` fact that the runs contain only zero bits of `n − 1`.
-- **C5, inverses and curve checks:** these come directly from the spec.
+See the [detailed completeness summary](docs/completeness.md) for the proved local
+lemmas, validation scope, resolved range-proof blocker, and remaining assembly.
+
+- **C1, product gadgets: done.** [Gadgets.lean](Baseline/ECDSA_P256_Digest/Completeness/Gadgets.lean)
+  proves `mul_complete`, `mux_complete`, `matQuad_complete` and `assertQuad_complete`
+  from `UsesLocalWitnessesCompleteness`. The assertion lemma additionally requires
+  that the target equals the evaluated quadratic. All four lemmas are axiom-audited.
+- **C2, `bits3`: done.** `bits3_complete` proves that the generated low bits and
+  derived third bit satisfy all three boolean assertions for every selector in
+  `0..7`. [Scalar.lean](Baseline/ECDSA_P256_Digest/Completeness/Scalar.lean) lifts
+  completeness to all 256 selectors and supplies boolean bits recomposing each
+  native selector. All three selector lemmas are included in the axiom audit.
+  The same module proves exact native E/R/S prefix and field reconstructions,
+  and completes the scalar binding, S-inverse, and range rows from `ScalarSpec`.
+  `scalar_spec_of_valid_witness` extracts this premise from the unchanged native
+  specification for the supplied witness.
+- **C3, local loop and table proofs: done.** [Step.lean](Baseline/ECDSA_P256_Digest/Completeness/Step.lean)
+  proves the first, 254 middle, and final rows under their local transition premises.
+  [Loop.lean](Baseline/ECDSA_P256_Digest/Completeness/Loop.lean) extracts those
+  transitions and the final X/Z conditions from native validity and proves the
+  first, middle, and final rows using the actual generated witnesses. Its five
+  bridge lemmas are axiom-audited; evaluated table arguments and bind offsets
+  still need top-level integration.
+  [Table.lean](Baseline/ECDSA_P256_Digest/Completeness/Table.lean) proves the four
+  precomputation checks from the native table predicate. Top-level integration remains.
+- **C4, range converse: done.** [Range.lean](Baseline/ECDSA_P256_Digest/Completeness/Range.lean)
+  proves `ltOrder_complete` for bounded boolean bits and the actual generated
+  quotient witnesses. The native scalar bounds are connected to these checks in
+  `scalar_reconstruction_complete`; top-level integration remains. Both results
+  are axiom-audited.
+- **C5, local inverse and curve checks: done.** `inverse_complete` and
+  `onCurve_complete` compile; their native premises are extracted into `ScalarSpec`.
+  Input-evaluation transport and full completeness assembly remain.
 
 ### Validation
 
@@ -105,9 +131,12 @@ lake build Solution.ECDSA_P256_Digest.Main Tests.Axioms
 python3 scripts/check_axioms.py
 ```
 
-The final local review passed `scripts/check.sh`, including all five axiom-audit
-roots and the 276-case vector suites. The warning on the unfinished completeness
-theorem is expected; the soundness theorem has no `sorryAx` dependency.
+The soundness milestone passed `scripts/check.sh`, including its five axiom-audit
+roots and the 276-case vector suites. The current axiom audit has twenty-two roots,
+including the completed selector, range, native scalar reconstruction, and
+native-spec scalar extraction lemmas, plus the five native-loop bridges.
+The warning on the unfinished completeness theorem is expected; the
+completed proofs have no `sorryAx` dependency.
 
 Full submission acceptance remains pending:
 

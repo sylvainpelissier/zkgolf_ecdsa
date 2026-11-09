@@ -1,7 +1,28 @@
 import Challenge.Specs.ECDSAP256
 import Solution.ECDSA_P256_Digest.Main
+import Baseline.ECDSA_P256_Digest.Completeness.Gadgets
+import Baseline.ECDSA_P256_Digest.Completeness.Range
+import Baseline.ECDSA_P256_Digest.Completeness.Scalar
+import Baseline.ECDSA_P256_Digest.Completeness.Loop
 #print axioms Challenge.Specs.ECDSAP256.Spec
 #print axioms ValidEcdsaWitness
 #print axioms bsmul
 #print axioms ECDSA.prime_115792089210356248762697446949407573530086143415290314195533631308867097853951
 #print axioms Solution.ECDSA_P256_Digest.soundness
+#print axioms Baseline.ECDSA_P256_Digest.mul_complete
+#print axioms Baseline.ECDSA_P256_Digest.mux_complete
+#print axioms Baseline.ECDSA_P256_Digest.matQuad_complete
+#print axioms Baseline.ECDSA_P256_Digest.assertQuad_complete
+#print axioms Baseline.ECDSA_P256_Digest.bits3_complete
+#print axioms Baseline.ECDSA_P256_Digest.ltOrder_complete
+#print axioms Baseline.ECDSA_P256_Digest.selectors_complete
+#print axioms Baseline.ECDSA_P256_Digest.selectors_complete_of_input
+#print axioms Baseline.ECDSA_P256_Digest.native_scalar_prefixes
+#print axioms Baseline.ECDSA_P256_Digest.native_scalar_recompositions
+#print axioms Baseline.ECDSA_P256_Digest.scalar_reconstruction_complete
+#print axioms Baseline.ECDSA_P256_Digest.scalar_spec_of_valid_witness
+#print axioms Baseline.ECDSA_P256_Digest.loopConstraints_rows_ofFn
+#print axioms Baseline.ECDSA_P256_Digest.native_loop_rows
+#print axioms Baseline.ECDSA_P256_Digest.loop_spec_of_valid_witness
+#print axioms Baseline.ECDSA_P256_Digest.loopConstraints_complete
+#print axioms Baseline.ECDSA_P256_Digest.loopResult_complete
