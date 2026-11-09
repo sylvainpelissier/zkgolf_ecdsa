@@ -2,11 +2,12 @@
 
 ## Result and Scope
 
-Completeness is not finished. The exported theorem
-`Solution.ECDSA_P256_Digest.completeness` still contains its original `sorry`.
-The local gadget, table, transition, and range-check proofs below compile without
-adding any new placeholders. Native scalar and loop bridges are proved; their
-integration at the top-level circuit binds and complete circuit assembly remain.
+Completeness is proved and exported as
+`Solution.ECDSA_P256_Digest.completeness`, without `sorryAx`.
+`main_constraints_complete` assembles every constraint at the actual top-level
+circuit binds. `main_completeness` wraps it in the unchanged
+`GeneralFormalCircuit.Completeness` contract, including the trivial `ProverSpec`.
+The assembly, wrapper, and exported theorem are persistently axiom-audited.
 
 The required direction is the reverse of [soundness](soundness.md): for a native
 input satisfying the unchanged specification, an environment using the circuit's
@@ -30,10 +31,10 @@ Sources: [trusted relation](../Challenge/Specs/ECDSAP256.lean),
 | --- | --- | --- |
 | C1: product and quadratic gadgets | Proved and persistently axiom-audited. | [Gadgets.lean](../Baseline/ECDSA_P256_Digest/Completeness/Gadgets.lean) |
 | C2: generated selector bits | Single-selector and all-256 completeness proved and persistently axiom-audited, including native selector and scalar reconstruction. | [Gadgets.lean](../Baseline/ECDSA_P256_Digest/Completeness/Gadgets.lean), [Scalar.lean](../Baseline/ECDSA_P256_Digest/Completeness/Scalar.lean) |
-| C3: table and transition rows | Table and all transition rows proved; native-loop extraction and first/middle/final completeness bridges axiom-audited. Top-level integration remains. | [Step.lean](../Baseline/ECDSA_P256_Digest/Completeness/Step.lean), [Table.lean](../Baseline/ECDSA_P256_Digest/Completeness/Table.lean), [Loop.lean](../Baseline/ECDSA_P256_Digest/Completeness/Loop.lean) |
-| C4: order bound | Range completeness and its connection to native scalar bounds proved and persistently axiom-audited; top-level integration remains. | [Range.lean](../Baseline/ECDSA_P256_Digest/Completeness/Range.lean), [Scalar.lean](../Baseline/ECDSA_P256_Digest/Completeness/Scalar.lean) |
-| C5: inverses and curve checks | Local lemmas proved and native scalar premises extracted; input-evaluation transport and top-level assembly remain. | [Gadgets.lean](../Baseline/ECDSA_P256_Digest/Completeness/Gadgets.lean), [Scalar.lean](../Baseline/ECDSA_P256_Digest/Completeness/Scalar.lean) |
-| Complete circuit | Not assembled or exported. | [Submission placeholder](../Solution/ECDSA_P256_Digest/Main.lean) |
+| C3: table and transition rows | Proved and integrated at the actual top-level offsets; covered by the assembly audit. | [Step.lean](../Baseline/ECDSA_P256_Digest/Completeness/Step.lean), [Table.lean](../Baseline/ECDSA_P256_Digest/Completeness/Table.lean), [Loop.lean](../Baseline/ECDSA_P256_Digest/Completeness/Loop.lean) |
+| C4: order bound | Range completeness and native scalar bounds proved and integrated; covered by the assembly audit. | [Range.lean](../Baseline/ECDSA_P256_Digest/Completeness/Range.lean), [Scalar.lean](../Baseline/ECDSA_P256_Digest/Completeness/Scalar.lean) |
+| C5: inverses and curve checks | Native premises transported through input evaluation and all checks assembled; covered by the assembly audit. | [Gadgets.lean](../Baseline/ECDSA_P256_Digest/Completeness/Gadgets.lean), [Scalar.lean](../Baseline/ECDSA_P256_Digest/Completeness/Scalar.lean) |
+| Complete circuit | Constraint assembly, public wrapper, and export proved and axiom-audited. | [Main.lean](../Baseline/ECDSA_P256_Digest/Completeness/Main.lean), [submission](../Solution/ECDSA_P256_Digest/Main.lean) |
 
 ## Generated Arithmetic Witnesses: C1
 
@@ -123,9 +124,9 @@ order bounds, discarding only the table and loop conjuncts. The challenge and
 interface specifications unfold to this same native premise; no witness is
 replaced and no assumptions are added.
 
-Applying these results at the top-level circuit offsets remains assembly work.
-Curve checks and the other supplied inverse checks are covered separately by
-the existing local lemmas.
+`main_constraints_complete` applies `scalar_reconstruction_complete` at the
+top-level circuit offsets. Curve checks and the other supplied inverse checks
+are assembled separately using the existing local lemmas.
 
 ## Composition and Transition Rows: C3
 
@@ -184,9 +185,9 @@ local transition premises from the native recursive predicate:
 
 All five are persistent axiom-audit roots. The completeness bridges take the
 native loop premises on the evaluated table arguments, boolean selector bits,
-and the supplied selectors' recomposition. Rewriting the actual top-level table
-outputs to the native table and splitting witness-use premises at circuit bind
-offsets remains assembly work. No new condition on final Y is imposed.
+and the supplied selectors' recomposition. `main_constraints_complete` rewrites
+the evaluated table arguments to the native table and splits witness-use premises
+at the actual circuit bind offsets. No new condition on final Y is imposed.
 
 ## Precomputation Table: C3
 
@@ -201,7 +202,7 @@ G + RPK. The existing addition-commutativity lemma reconciles the native R + G
 order with the circuit's constant-folded G + R formula.
 
 The result is a conjunction of four local checked computations at arbitrary
-offsets. Connecting them to the top-level circuit binds remains assembly work.
+offsets. `main_constraints_complete` connects these to the top-level circuit binds.
 
 ## Curve and Inverse Checks: C5
 
@@ -212,10 +213,9 @@ offsets. Connecting them to the top-level circuit binds remains assembly work.
 curve equation to discharge its rows. `pointEq_complete` similarly turns the
 native projective-to-affine equality into its two assertions.
 
-These local proofs compile. Their native curve and inverse premises are now
-extracted from `ValidEcdsaWitness` by `scalar_spec_of_valid_witness`. Transporting
-them through input evaluation and applying the local lemmas remains final
-assembly work.
+Their native curve and inverse premises are extracted from `ValidEcdsaWitness`
+by `scalar_spec_of_valid_witness`. `main_constraints_complete` transports them
+through input evaluation and applies the local lemmas at the actual bind offsets.
 
 ## Range Converse: C4
 
@@ -277,31 +277,28 @@ exact Nat.le_antisymm hboundBit (Nat.sub_eq_zero_iff_le.mp hmissingBit)
 
 `Nat.sub_eq_zero_iff_le` extracts `1 <= b` from `1 - b = 0`, and antisymmetry
 combines it with `b <= 1`. Lean handles the definitionally equal indices directly.
-No theorem assumption or circuit equation was changed. The range module is now
-imported by the persistent audit; it is not yet integrated into the exported
-completeness proof.
+No theorem assumption or circuit equation was changed. The range module is
+imported by the persistent audit and integrated into the exported completeness proof.
 
 ## Validation Snapshot
 
-The completed gadget, selector, step, table, range, and loop modules build with:
+The completed gadget, selector, step, table, range, loop, and assembly modules build with:
 
 ```sh
-lake build Baseline.ECDSA_P256_Digest.Completeness.Table Tests.Axioms
+lake build Solution.ECDSA_P256_Digest.Main Tests.Axioms
 python3 scripts/check_axioms.py
 ```
 
-The persistent [axiom audit](../Tests/Axioms.lean) has twenty-two roots, including the
+The persistent [axiom audit](../Tests/Axioms.lean) has twenty-six roots, including the
 five original C1/C2 lemmas, `ltOrder_complete`, `selectors_complete`, and
 `selectors_complete_of_input`, plus `native_scalar_prefixes`,
 `native_scalar_recompositions`, `scalar_reconstruction_complete`, and
-`scalar_spec_of_valid_witness`, and all five native-loop lemmas above. Its imports
-ensure this build also checks the range, scalar, and loop modules. Separately,
-`#print axioms` checked `table_complete`,
-`middle_complete`, `firstRow_complete`, `lastRow_complete`, `onCurve_complete`,
-`inverse_complete`, and `runCheck_complete`. All seven use only `propext`,
-`Classical.choice`, and `Quot.sound`; they are not yet explicit persistent audit
-roots. The `ltOrder_complete` audit also covers its dependencies, including
-`runCheck_complete` and the zero-count bridge.
+`scalar_spec_of_valid_witness`, all five native-loop lemmas above,
+`native_spec_of_valid_witness`, `main_constraints_complete`, `main_completeness`,
+and `Solution.ECDSA_P256_Digest.completeness`. The assembly
+root transitively audits the table, transition, curve, inverse, selector, scalar,
+and range lemmas it uses. All roots use only `propext`, `Classical.choice`, and
+`Quot.sound`; the exported completeness theorem has no `sorryAx` dependency.
 
 The range module also builds independently:
 
@@ -312,9 +309,41 @@ lake build Baseline.ECDSA_P256_Digest.Completeness.Range
 The full cross-validation suite and actual comparator acceptance have not been
 rerun for this completeness milestone.
 
-## Remaining Assembly
+## Top-Level Assembly
 
-1. Combine table, loop, scalar binding, curve, inverse, and range checks at the
-   actual top-level offsets, then replace the exported completeness placeholder.
-2. Add the remaining completed roots to the persistent audit, run the full local checks, and
-   perform comparator, verifier-time, and external cross-validation gates.
+The first assembly step is isolated in
+[Native.lean](../Baseline/ECDSA_P256_Digest/Completeness/Native.lean).
+`native_spec_of_valid_witness` extracts `ScalarSpec`, the exact precomputation
+predicate, the recursive loop predicate, and the final X/Z conditions from the
+unchanged specification for the supplied witness. It reuses the scalar and loop
+extraction lemmas and is a persistent axiom-audit root. The top-level proof in
+[Main.lean](../Baseline/ECDSA_P256_Digest/Completeness/Main.lean) consumes this
+result and proves `main_constraints_complete` from the unchanged native
+specification and `UsesLocalWitnessesCompleteness`.
+
+The proof splits witness-use and completeness constraints through the same bind
+rules. It normalizes offsets with the existing gadget-length lemmas before
+applying the local completeness results. The table additions begin at offsets
+0, 6, 12, and 23 relative to the supplied circuit offset. Selectors begin at 29;
+the first, middle, and final transitions begin at 541, 555, and 9191.
+The scalar bindings start at 9224, the curve checks at 9224 and 9226, and the
+range checks at 9228 and 9262. These offsets are checked against the actual
+circuit operations by Lean, not assumed as extra premises.
+
+Keeping conjunction results as projections avoids expensive nested case
+elaboration. The complete proof compiles under the default heartbeat and
+recursion budgets; no increased proof budget is needed.
+
+`main_completeness` introduces the framework's offset, prover environment, input,
+actual witness-use premise, input-evaluation equality, and `ProverAssumptions`.
+Those assumptions unfold to the same native specification consumed by
+`main_constraints_complete`. The wrapper pairs its constraint proof with the
+trivial `ProverSpec`. The submission imports this wrapper and exports it under
+the exact challenge theorem statement, without unfolding the circuit.
+
+## Remaining Work
+
+Run the full local checks and perform actual comparator acceptance,
+verifier-time, and external cross-validation gates. The targeted submission
+build and persistent axiom audit cover the completed public wrapper and export;
+they do not establish comparator acceptance.

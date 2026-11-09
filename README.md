@@ -34,7 +34,7 @@ baseline score; the local submission's proved cost is recorded below. See
 The submission module is [`Solution/ECDSA_P256_Digest/Main.lean`](Solution/ECDSA_P256_Digest/Main.lean).
 It re-exports the circuit and proofs in [`Baseline/ECDSA_P256_Digest/`](Baseline/ECDSA_P256_Digest/).
 The circuit's proved cost is 19,630: 9,296 allocations and 10,334 constraints.
-This is not yet a comparator-accepted submission: completeness remains unfinished.
+All submission obligations are proved; actual comparator acceptance remains pending.
 
 | Obligation | Status | Proof |
 | --- | --- | --- |
@@ -44,11 +44,10 @@ This is not yet a comparator-accepted submission: completeness remains unfinishe
 | `requirementsChannelsLawful` | done | [`Plain.lean`](Baseline/ECDSA_P256_Digest/Plain.lean) |
 | `computableWitness` | done | [`CompWit.lean`](Baseline/ECDSA_P256_Digest/CompWit.lean) |
 | `soundness` | done | [`Soundness/Main.lean`](Baseline/ECDSA_P256_Digest/Soundness/Main.lean) |
-| `completeness` | in progress | [Progress and remaining assembly](docs/completeness.md) |
+| `completeness` | done | [`Completeness/Main.lean`](Baseline/ECDSA_P256_Digest/Completeness/Main.lean) |
 
-The circuit and trusted statements are unchanged by the soundness work. Among the
-submission obligations, only completeness still uses `sorryAx`. The exported
-soundness theorem is audited in [Tests/Axioms.lean](Tests/Axioms.lean) and uses
+The circuit and trusted statements are unchanged by the proof work. The exported
+soundness and completeness theorems are audited in [Tests/Axioms.lean](Tests/Axioms.lean) and use
 only `propext`, `Classical.choice`, and `Quot.sound`.
 
 ### Soundness
@@ -80,11 +79,11 @@ Done, one file per part of `ValidEcdsaWitness`:
 
 ### Completeness
 
-In progress. The honest prover's actual witness generators must satisfy every constraint.
-The exported completeness theorem remains unfinished.
+Proved and exported. The honest prover's actual witness generators satisfy every
+constraint for every input satisfying the unchanged native specification.
 
 See the [detailed completeness summary](docs/completeness.md) for the proved local
-lemmas, validation scope, resolved range-proof blocker, and remaining assembly.
+lemmas, top-level assembly, validation scope, and remaining acceptance checks.
 
 - **C1, product gadgets: done.** [Gadgets.lean](Baseline/ECDSA_P256_Digest/Completeness/Gadgets.lean)
   proves `mul_complete`, `mux_complete`, `matQuad_complete` and `assertQuad_complete`
@@ -104,18 +103,24 @@ lemmas, validation scope, resolved range-proof blocker, and remaining assembly.
   [Loop.lean](Baseline/ECDSA_P256_Digest/Completeness/Loop.lean) extracts those
   transitions and the final X/Z conditions from native validity and proves the
   first, middle, and final rows using the actual generated witnesses. Its five
-  bridge lemmas are axiom-audited; evaluated table arguments and bind offsets
-  still need top-level integration.
+  bridge lemmas are axiom-audited and integrated with evaluated table arguments
+  at the actual top-level bind offsets.
   [Table.lean](Baseline/ECDSA_P256_Digest/Completeness/Table.lean) proves the four
-  precomputation checks from the native table predicate. Top-level integration remains.
+  precomputation checks from the native table predicate; top-level integration is proved.
 - **C4, range converse: done.** [Range.lean](Baseline/ECDSA_P256_Digest/Completeness/Range.lean)
   proves `ltOrder_complete` for bounded boolean bits and the actual generated
   quotient witnesses. The native scalar bounds are connected to these checks in
-  `scalar_reconstruction_complete`; top-level integration remains. Both results
+  `scalar_reconstruction_complete` and integrated at the top level. Both results
   are axiom-audited.
 - **C5, local inverse and curve checks: done.** `inverse_complete` and
   `onCurve_complete` compile; their native premises are extracted into `ScalarSpec`.
-  Input-evaluation transport and full completeness assembly remain.
+  Input-evaluation transport and constraint assembly are proved in
+  [Main.lean](Baseline/ECDSA_P256_Digest/Completeness/Main.lean).
+- **Constraint assembly: done.** `main_constraints_complete` combines every row
+  using the actual local witness generators and unchanged native specification.
+  It builds under the default proof budgets and is persistently axiom-audited.
+  `main_completeness` supplies the public wrapper and trivial prover postcondition;
+  the submission exports it as `Solution.ECDSA_P256_Digest.completeness`.
 
 ### Validation
 
@@ -124,7 +129,7 @@ the Lean build, regressions, the permitted-axiom audit, and Lean/Rust vector che
 It builds `Tests.Axioms` and its submission dependencies before auditing them;
 the default `lake build` alone does not build the submission.
 
-For a focused soundness check:
+For a focused soundness and completeness check:
 
 ```sh
 lake build Solution.ECDSA_P256_Digest.Main Tests.Axioms
@@ -132,11 +137,11 @@ python3 scripts/check_axioms.py
 ```
 
 The soundness milestone passed `scripts/check.sh`, including its five axiom-audit
-roots and the 276-case vector suites. The current axiom audit has twenty-two roots,
+roots and the 276-case vector suites. The current axiom audit has twenty-six roots,
 including the completed selector, range, native scalar reconstruction, and
-native-spec scalar extraction lemmas, plus the five native-loop bridges.
-The warning on the unfinished completeness theorem is expected; the
-completed proofs have no `sorryAx` dependency.
+native-spec scalar extraction lemmas, the five native-loop bridges, and native
+premise extraction, full constraint assembly, the public completeness wrapper,
+and exported completeness. Neither exported correctness theorem depends on `sorryAx`.
 
 Full submission acceptance remains pending:
 

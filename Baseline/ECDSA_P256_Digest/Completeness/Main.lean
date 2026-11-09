@@ -1,6 +1,5 @@
-import Baseline.ECDSA_P256_Digest.Completeness.Table
-import Baseline.ECDSA_P256_Digest.Completeness.Scalar
-import Baseline.ECDSA_P256_Digest.Completeness.Loop
+import Baseline.ECDSA_P256_Digest.Completeness.Native
+import Baseline.ECDSA_P256_Digest.CompWit
 import Baseline.ECDSA_P256_Digest.Elaborated
 
 namespace Baseline.ECDSA_P256_Digest
@@ -28,6 +27,13 @@ theorem table_inputs {env : Environment FF} {inputVar : Var Input FF} {input : I
     List.getElem_cons_zero, List.getElem_cons_succ, hin.pkX, hin.pkY, hin.rx, hin.ry, hin.pre]
   simpa only [true_and, preList, hin.pre] using preList_input hin
 
+private theorem middle_len (input : Var Input FF) (bits : Vector (Vector E 3) 256)
+    (xs ys : Vector E 6) (offset : ℕ) :
+    (middle input bits xs ys).localLength offset = 8636 := by
+  rw [middle, Circuit.forEach.localLength_eq]
+  simp only [Circuit.bind_localLength_eq, step_len, assertPoint_len]
+
+/-- Native validity and the actual generated witnesses satisfy every circuit constraint. -/
 theorem main_constraints_complete {env : ProverEnvironment FF}
     {inputVar : Var Input FF} {input : Input FF} {offset : ℕ}
     (heval : eval env.toEnvironment inputVar = input)
@@ -35,72 +41,87 @@ theorem main_constraints_complete {env : ProverEnvironment FF}
     (hspec : Challenge.Specs.ECDSAP256.Spec input.pkX input.pkY input.digest (witness input)) :
     ConstraintsHold.Completeness env ((main inputVar).operations offset) := by
   have hin := inputEval heval
-  have hscalar := scalar_spec_of_valid_witness hspec
-  have hnativeLoop := loop_spec_of_valid_witness hspec
-  obtain ⟨_, _, _, _, _, hvalues, hE, hR, hPK, hRc, hRxInv, hSInv,
-    hPkInv, hRbound, hSbound⟩ := hscalar
-  obtain ⟨_, _, _, _, _, _, hnativeTable, _⟩ := hspec
+  obtain ⟨hscalar, hnativeTable, hnativeLoop⟩ := native_spec_of_valid_witness hspec
+  have hscalarSpec := hscalar
+  obtain ⟨_, _, _, _, _, hvalues, _, _, hPK, hRc, hRxInv, _,
+    hPkInv, _, _⟩ := hscalar
   rw [main] at hwitness ⊢
   simp only [Circuit.ConstraintsHold.bind_usesLocalWitnesses] at hwitness
   simp only [completeness_bind]
+  simp only [matPoint_len, pointEq_len, addAff_len, selectors_len, selectPoint_len,
+    assertFirst_len, step_len, assertQuad_len, assertZero_len, onCurve_len, inverse_len,
+    middle_len, ltOrder_len, Nat.add_zero, Nat.add_assoc, Nat.reduceAdd] at hwitness ⊢
   obtain ⟨wG1, wE1, wG2, wE2, wA, wM, wE3, wG4, wE4, wSelectors,
     wSelect, wFirst, wMiddle, wStep, wLastX, wLastZ, wE, wR, wPK, wRc,
     wRxInv, wSInv, wPkInv, wRangeR, wRangeS⟩ := hwitness
   have htable := table_complete
-    ((Circuit.ConstraintsHold.bind_usesLocalWitnesses _).mpr ⟨wG1, wE1⟩)
-    ((Circuit.ConstraintsHold.bind_usesLocalWitnesses _).mpr ⟨wG2, wE2⟩)
-    ((Circuit.ConstraintsHold.bind_usesLocalWitnesses _).mpr
-      ⟨wA, (Circuit.ConstraintsHold.bind_usesLocalWitnesses _).mpr ⟨wM, wE3⟩⟩)
-    ((Circuit.ConstraintsHold.bind_usesLocalWitnesses _).mpr ⟨wG4, wE4⟩) (by
+    (pkX := inputVar.pkX) (pkY := inputVar.pkY) (rx := inputVar.rx) (ry := inputVar.ry)
+    (pre := inputVar.pre) (firstOffset := offset) (secondOffset := offset + 6)
+    (thirdOffset := offset + 12) (fourthOffset := offset + 23)
+    (by simpa only [Circuit.ConstraintsHold.bind_usesLocalWitnesses, matPoint_len]
+          using And.intro wG1 wE1)
+    (by simpa only [Circuit.ConstraintsHold.bind_usesLocalWitnesses, matPoint_len,
+          Nat.add_assoc, Nat.reduceAdd] using And.intro wG2 wE2)
+    (by simpa only [Circuit.ConstraintsHold.bind_usesLocalWitnesses, addAff_len,
+          matPoint_len, Nat.add_assoc, Nat.reduceAdd]
+          using And.intro wA (And.intro wM wE3))
+    (by simpa only [Circuit.ConstraintsHold.bind_usesLocalWitnesses, matPoint_len,
+          Nat.add_assoc, Nat.reduceAdd] using And.intro wG4 wE4) (by
       rw [hin.pkX, hin.pkY, hin.rx, hin.ry, preList_input hin]
       exact hnativeTable)
-  simp only [completeness_bind] at htable
-  obtain ⟨⟨hG1, hE1⟩, ⟨hG2, hE2⟩,
-    ⟨hA, hM, hE3⟩, ⟨hG4, hE4⟩⟩ := htable
-  obtain ⟨hSelectors, hsel⟩ := selectors_complete_of_input hin wSelectors hvalues
+  simp only [completeness_bind, matPoint_len, addAff_len,
+    Nat.add_assoc, Nat.reduceAdd] at htable
+  obtain ⟨hSelectors, hsel⟩ :=
+    selectors_complete_of_input (env := env) (inputVar := inputVar) (input := input)
+      hin wSelectors hvalues
   have hbits := fun index component => (hsel index).1 component
   have hselector := fun index => (hsel index).2
   have htableInputs := table_inputs hin
-  have hloop := loopConstraints_complete hin
-    ((Circuit.ConstraintsHold.bind_usesLocalWitnesses _).mpr ⟨wSelect, wFirst⟩)
+  have hloop := loopConstraints_complete (env := env) hin
+    (firstOffset := offset + 541)
+    (by simpa only [Circuit.ConstraintsHold.bind_usesLocalWitnesses,
+          selectPoint_len, Nat.add_assoc, Nat.reduceAdd] using And.intro wSelect wFirst)
     wMiddle hbits hselector (by
       rw [htableInputs.1, htableInputs.2.1, htableInputs.2.2.1, htableInputs.2.2.2]
       exact hnativeLoop.1)
-  simp only [completeness_bind] at hloop
-  obtain ⟨⟨hSelect, hFirst⟩, hMiddle⟩ := hloop
-  have hlast := loopResult_complete hin
-    ((Circuit.ConstraintsHold.bind_usesLocalWitnesses _).mpr
-      ⟨wStep, (Circuit.ConstraintsHold.bind_usesLocalWitnesses _).mpr ⟨wLastX, wLastZ⟩⟩)
+  simp only [completeness_bind, selectPoint_len, Nat.add_assoc, Nat.reduceAdd] at hloop
+  have hlast := loopResult_complete (env := env) hin
+    (offset := offset + 9191)
+    (by simpa only [Circuit.ConstraintsHold.bind_usesLocalWitnesses,
+          step_len, assertQuad_len, Nat.add_assoc, Nat.reduceAdd]
+          using And.intro wStep (And.intro wLastX wLastZ))
     (hbits 255) (hselector 255) (by
       rw [htableInputs.1, htableInputs.2.1, htableInputs.2.2.1, htableInputs.2.2.2]
       exact hnativeLoop.2)
-  simp only [completeness_bind] at hlast
-  have hrecompose := native_scalar_recompositions hbits hselector
-  have hprefix := native_scalar_prefixes hbits hselector
-  refine ⟨hG1, hE1, hG2, hE2, hA, hM, hE3, hG4, hE4, hSelectors,
-    hSelect, hFirst, hMiddle, hlast.1, hlast.2.1, hlast.2.2,
-    ?_, ?_, onCurve_complete wPK ?_, onCurve_complete wRc ?_,
-    inverse_complete ?_, inverse_complete ?_, inverse_complete ?_,
-    ltOrder_complete wRangeR (fun index => hbits index 1) ?_,
-    ltOrder_complete wRangeS (fun index => hbits index 2) ?_⟩
-  · have hbinding := hrecompose.1.trans (hE.trans hin.digest.symm)
-    simpa only [circuit_norm, sub_eq_zero] using hbinding
-  · have hbinding := hrecompose.2.1.trans (hR.trans hin.rx.symm)
-    simpa only [circuit_norm, sub_eq_zero] using hbinding
+  simp only [completeness_bind, step_len, assertQuad_len,
+    Nat.add_assoc, Nat.reduceAdd] at hlast
+  have hscalarRows :=
+    scalar_reconstruction_complete (env := env)
+      (digestOffset := offset + 9224) (rOffset := offset + 9224)
+      (inverseOffset := offset + 9228) hin hbits hselector hscalarSpec wRangeR wRangeS
+  refine ⟨htable.1.1, htable.1.2, htable.2.1.1, htable.2.1.2,
+    htable.2.2.1.1, htable.2.2.1.2.1, htable.2.2.1.2.2,
+    htable.2.2.2.1, htable.2.2.2.2, hSelectors,
+    hloop.1.1, hloop.1.2, hloop.2, hlast.1, hlast.2.1, hlast.2.2,
+    hscalarRows.1, hscalarRows.2.1, onCurve_complete wPK ?_, onCurve_complete wRc ?_,
+    inverse_complete ?_, hscalarRows.2.2.1, inverse_complete ?_,
+    hscalarRows.2.2.2.1, hscalarRows.2.2.2.2⟩
   · rw [hin.pkX, hin.pkY]
     simpa [AffinePoint.IsOnCurve, Challenge.Specs.ECDSAP256.params, curveA, curveB] using hPK
   · rw [hin.rx, hin.ry]
-    simpa [AffinePoint.IsOnCurve, witness, Challenge.Specs.ECDSAP256.params,
+    simpa [AffinePoint.IsOnCurve, Challenge.Instances.ECDSA_P256_Digest.Interface.witness,
+      Challenge.Specs.ECDSAP256.params,
       curveA, curveB] using hRc
   · rw [hin.rx, hin.rxInv]
     exact hRxInv
-  · rw [hrecompose.2.2, hin.sInv]
-    exact hSInv
   · rw [hin.pkX, hin.pkInv]
     exact hPkInv
-  · rw [← hprefix.2.1]
-    exact hRbound
-  · rw [← hprefix.2.2]
-    exact hSbound
+
+/-- Completeness of the full circuit for the native honest-prover assumptions. -/
+theorem main_completeness :
+    GeneralFormalCircuit.Completeness FF main ProverAssumptions ProverSpec := by
+  intro offset env inputVar hwitness input heval hspec
+  rw [CircuitType.eval_var_prover_to_verifier] at heval
+  exact ⟨main_constraints_complete (env := env) heval hwitness hspec, trivial⟩
 
 end Baseline.ECDSA_P256_Digest
