@@ -13,6 +13,8 @@ lean_lib ECDSA where
 
 lean_lib Baseline
 
+lean_lib Optimized
+
 lean_exe baselineCheck where
   root := `Baseline.Check
 

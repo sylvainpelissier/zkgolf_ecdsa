@@ -167,6 +167,11 @@ accounts for 8,636 allocations and 9,398 constraints: 18,034 of the 19,630 score
 units, about 92%. These 254 iterations are the main target for future circuit
 optimization; this breakdown does not establish that any checks can be removed.
 
+[docs/optimization.md](docs/optimization.md) describes two changes to the loop body,
+that bring the cost to 18,612 without removing any check. They are implemented in
+[`Optimized/`](Optimized/ECDSA_P256_Digest/) with a proved cost and gadget soundness, but
+are not yet the submitted circuit.
+
 The proof already avoids unrolling the loop through indexed induction and sealed
 gadgets. Retain the bidirectional `loopConstraints_iff_rows` lemma for completeness;
 further proof simplification should be guided by measured elaboration costs.
