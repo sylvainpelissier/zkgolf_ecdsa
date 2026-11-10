@@ -34,7 +34,8 @@ baseline score; the local submission's proved cost is recorded below. See
 The submission module is [`Solution/ECDSA_P256_Digest/Main.lean`](Solution/ECDSA_P256_Digest/Main.lean).
 It re-exports the circuit and proofs in [`Baseline/ECDSA_P256_Digest/`](Baseline/ECDSA_P256_Digest/).
 The circuit's proved cost is 19,630: 9,296 allocations and 10,334 constraints.
-All submission obligations are proved; actual comparator acceptance remains pending.
+All submission obligations are proved. The actual submission passes the pinned
+comparator using its local, unsandboxed development shim.
 
 | Obligation | Status | Proof |
 | --- | --- | --- |
@@ -136,22 +137,24 @@ lake build Solution.ECDSA_P256_Digest.Main Tests.Axioms
 python3 scripts/check_axioms.py
 ```
 
-The soundness milestone passed `scripts/check.sh`, including its five axiom-audit
-roots and the 276-case vector suites. The current axiom audit has twenty-six roots,
+The completed submission passed `scripts/check.sh` on 2026-11-10 in 71.42 seconds,
+including all twenty-six axiom-audit roots and the 276-case Lean/Rust vector suites.
+The current axiom audit includes
 including the completed selector, range, native scalar reconstruction, and
 native-spec scalar extraction lemmas, the five native-loop bridges, and native
 premise extraction, full constraint assembly, the public completeness wrapper,
 and exported completeness. Neither exported correctness theorem depends on `sorryAx`.
 
-Full submission acceptance remains pending:
+The actual comparator accepted `configs/ECDSA_P256_Digest.json`, printing
+"Your solution is okay!" after Lean kernel replay. A fresh project build and
+comparison took 770.94 seconds, below the 1200 s verifier limit; dependency caches
+were retained. With existing project artifacts, comparison took 77.59 seconds.
+All four positive/negative comparator fixtures also passed. The pinned C++
+cross-check passed all 276 cases (200 evaluated, 76 byte-envelope rejections).
 
-- Run the comparator on `configs/ECDSA_P256_Digest.json` until it prints "Your solution is okay!".
-- Check that the full build stays within the 1200 s verifier limit.
-- Cross-check against Longfellow with `scripts/check_cpp.py`.
-
-`scripts/check_comparator.py` checks positive/negative integration fixtures, not
-acceptance of the actual submission. Neither the external C++ check nor full
-comparator acceptance was rerun for the soundness-only review.
+These runs use the unsandboxed development shim, not production Landrun isolation.
+They do not establish cold dependency-build or production performance. See
+[validation](docs/validation.md) for reproduction commands and scope.
 
 ### Optimization follow-up
 

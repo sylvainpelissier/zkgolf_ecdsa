@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Reproducible source-only handoff; does not publish or imply a proved circuit."""
+"""Reproducible source-only challenge and proof handoff; does not publish."""
 import gzip
 import hashlib
 import io
@@ -9,11 +9,11 @@ import tarfile
 root = Path(__file__).resolve().parents[1]
 out = root / 'dist'
 out.mkdir(exist_ok=True)
-roots = ['Challenge', 'Tests', 'configs', 'docs', 'scripts', 'vectors', 'vendor']
+roots = ['Baseline', 'Challenge', 'Solution', 'Tests', 'configs', 'docs', 'scripts', 'vectors', 'vendor']
 files = [p for name in roots for p in (root / name).rglob('*')
          if p.is_file() and '__pycache__' not in p.parts]
 files += [root / name for name in [
-    '.gitignore', 'Challenge.lean', 'CHALLENGE.md', 'README.md',
+    '.gitignore', 'Baseline.lean', 'Challenge.lean', 'Solution.lean', 'CHALLENGE.md', 'README.md',
     'THIRD_PARTY_NOTICES.md', 'challenge.json', 'lake-manifest.json',
     'lakefile.lean', 'lean-toolchain', 'reference/Cargo.toml',
     'reference/Cargo.lock', 'reference/src/main.rs', 'reference/cpp/probe.h',
@@ -35,4 +35,4 @@ with archive.open('wb') as f, gzip.GzipFile(filename='', mode='wb', fileobj=f, m
 digest = hashlib.sha256(archive.read_bytes()).hexdigest()
 (out / 'SHA256SUMS').write_text(f'{digest}  {archive.name}\n')
 print(f'{archive}: {len(payload)} files, SHA-256 {digest}')
-print('Challenge proposal bundle: site registration, toolchain deployment and baseline policy require maintainer review.')
+print('Challenge and proof source bundle: site registration, toolchain deployment and baseline policy require maintainer review.')

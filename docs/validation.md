@@ -1,17 +1,41 @@
 # Validation of the circuit target
 
-Native-interface validation (2026-10-18; C++ adapter evidence retained from the unchanged pinned implementation):
+Completed-submission local validation (2026-11-10):
 
 | Check | Result |
-|---|---|
-| Lean 4.34.0 challenge build | Passed |
+| --- | --- |
+| Lean 4.34.0 challenge and submission builds | Passed |
 | Infinity/exceptional-affine regressions | Passed |
-| Trusted axiom audit | 4 roots passed; standard axioms only |
+| Trusted axiom audit | 26 roots passed; standard axioms only |
 | Lean circuit-path vectors | 276/276 |
 | RustCrypto-based vector checks | 276/276; 262 original-message checks |
 | External C++ byte-adapter diagnostics | 276/276 (200 C++, 76 envelope rejections) |
 | Comparator positive/negative checks | 4/4 |
+| Actual submission comparator and Lean kernel replay | Accepted; "Your solution is okay!" |
+| Fresh project verification, dependency caches retained | 770.94 s; below 1200 s |
 | Source hashes and deterministic corpus | Passed |
+
+`scripts/check.sh` completed in 71.42 seconds initially and 115.71 seconds on the
+final rerun after fresh project verification. Actual submission comparison took
+77.59 seconds with existing project artifacts, and 770.94 seconds after
+`lake clean ECDSAGolf`. Dependency build caches were retained. These runs use the
+pinned comparator's unsandboxed development shim with Nanoda disabled, as
+configured by the challenge. They do not establish production sandbox acceptance
+or cold dependency-build performance.
+
+After building the pinned comparator as described in
+[publication.md](publication.md), reproduce actual submission verification with:
+
+```sh
+lake clean ECDSAGolf
+COMPARATOR_LANDRUN=/tmp/ecdsa-comparator/scripts/fake-landrun.sh \
+COMPARATOR_LEAN4EXPORT=/tmp/ecdsa-comparator/.lake/packages/lean4export/.lake/build/bin/lean4export \
+  /usr/bin/time -p lake env /tmp/ecdsa-comparator/.lake/build/bin/comparator \
+  configs/ECDSA_P256_Digest.json
+```
+
+Local run logs are generated under `dist/comparator-checks/`, including
+`actual-submission.log` and `actual-submission-fresh.log`.
 
 The authoritative challenge relation wraps Longfellow's `ValidEcdsaWitness` at
 commit `4fe092be7e8e9634cd3b27daf55695a3a416043e`. The circuit field is P-256's base
@@ -49,18 +73,25 @@ checks that G+(-G) has zero Z and nonzero Y. A general Lean lemma proves that su
 a point cannot satisfy the affine point-equality assertion.
 
 The trusted-root audit covers the wrapper, `ValidEcdsaWitness`, scalar
-multiplication and the Pratt primality proof. Only standard Lean axioms are
-allowed. No BN254 or P-256 primality axiom is added.
+multiplication, the Pratt primality proof, and the soundness and completeness
+proofs, including exported submission correctness. All 26 roots pass with only
+`propext`, `Classical.choice`, and `Quot.sound` allowed. No BN254 or P-256
+primality axiom is added.
 
 The comparator checks acceptance of a valid proof using the actual target,
 and rejection of an unfinished proof, changed statement and template submitted
 as a solution. Its exact revisions and outcomes are recorded in
 `comparator-validation.json`. It is tested with self-authored fixtures using the
-upstream development shim, not a production sandbox.
+upstream development shim, not a production sandbox. Separately, the actual
+submission passed all seven configured theorem comparisons, both definition
+comparisons, the permitted-axiom policy, and Lean kernel replay.
 
-No R1CS baseline, proof of the C++ compiler, production deployment or full
-credential protocol is claimed. Contestants must prove equivalence to the pinned
-circuit relation, not completeness for all mathematical ECDSA inputs.
+The local R1CS submission has proved cost 19,630 (9,296 witness allocations and
+10,334 constraints), with all seven submission obligations proved. This does not
+set an official challenge baseline score. No proof of the C++ compiler,
+production deployment or full credential protocol is claimed. Contestants must
+prove equivalence to the pinned circuit relation, not completeness for all
+mathematical ECDSA inputs.
 
 The 276 serialized fixtures remain external adapters after the native-interface
 migration. Their 76 byte-envelope rejections do not establish native constraints.

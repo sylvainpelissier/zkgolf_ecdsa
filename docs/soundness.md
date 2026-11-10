@@ -172,8 +172,10 @@ git diff --check
 theorem as a persistent audit root. All five audit roots passed the policy that
 permits only `propext`, `Classical.choice`, and `Quot.sound`.
 
-Soundness is complete, but the submission is not yet fully verified.
-Completeness still has a `sorry` placeholder: the reverse direction must show
-that the actual witness generators satisfy the constraints for every input
-satisfying the native specification. Full comparator acceptance, the complete
-verifier-time check, and final cross-validation remain pending.
+Completeness is now also proved and exported without `sorryAx`; the current
+audit has 26 roots. On 2026-11-10, the full local suite, external C++ cross-check,
+four comparator fixtures, and actual submission comparator acceptance all passed.
+Fresh project verification, including Lean kernel replay, took 770.94 seconds
+with dependency caches retained, below the 1200 s limit. See
+[validation](validation.md) for reproduction and the local development-shim
+scope; production sandbox acceptance is not established by these checks.

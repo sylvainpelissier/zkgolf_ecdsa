@@ -1,10 +1,11 @@
 # Challenge handoff
 
-The deliverable is a challenge-authoring package pinned to Longfellow PR #215
-commit `4fe092be7e8e9634cd3b27daf55695a3a416043e`. `CHALLENGE.md` supplies page
-copy, `challenge.json` metadata, and `configs/ECDSA_P256_Digest.json` the exact
-proof contract. No circuit solution or measured par is supplied. Template
-placeholders and zero cost slots must not be submitted as a solution or score.
+The deliverable is a challenge-authoring package and proved local R1CS submission
+pinned to Longfellow PR #215 commit `4fe092be7e8e9634cd3b27daf55695a3a416043e`.
+`CHALLENGE.md` supplies page copy, `challenge.json` metadata, and
+`configs/ECDSA_P256_Digest.json` the exact proof contract. The implementation and
+all seven submission proofs are included under `Baseline/` and `Solution/`.
+The trusted challenge template's placeholders must not be submitted as a solution.
 
 The target is Longfellow’s `ValidEcdsaWitness` circuit model over the P-256
 base field, with the native pointwise interface in `Challenge/Specs/ECDSAP256.lean`.
@@ -37,14 +38,35 @@ checker revision and sandbox require deployment-specific validation.
 
 ## Source bundle
 
-Run `python3 scripts/package.py`. The archive excludes local caches, dependency
-checkouts, build outputs and credentials and contains a SHA-256 source manifest.
-The test fixture proofs are integration checks, not an R1CS implementation.
+Run `python3 scripts/package.py`. The archive includes the `Baseline/` and
+`Solution/` proof trees and their top-level Lean modules alongside the challenge,
+tests, dependency pins, and reference adapters. It excludes local caches,
+dependency checkouts, build outputs and credentials and contains a SHA-256 source
+manifest. The comparator fixtures remain integration tests, separate from the
+included R1CS submission.
 
-The challenge intentionally supplies no baseline solution or measured score.
-The site registration should preserve `baseline_score: null`; the cost-slot zeros
-are template placeholders. Site maintainers control registry and scoring UI
-integration. The copied zkGolf utility files retain a provenance notice; no
+With Lean/Elan, Python 3, Cargo, and dependency downloads available, extract and
+verify the source bundle from the repository root:
+
+```sh
+python3 scripts/package.py
+bundle_dir="$(mktemp -d)"
+tar -xzf dist/ecdsa-p256-digest-source.tar.gz -C "$bundle_dir"
+cd "$bundle_dir/ecdsa-p256-digest"
+shasum -a 256 -c SHA256SUMS
+scripts/bootstrap.sh
+scripts/check.sh
+```
+
+`scripts/check.sh` builds the submission through `Tests.Axioms`, audits the proof
+dependencies, and runs the Lean/Rust vectors. The default `lake build` alone does
+not build the submission. Dependency caches may be reused when checking the
+archive, but project build outputs must be generated from the extracted sources.
+
+The local submission's proved cost is 19,630; this does not establish an official
+baseline score. Site registration should preserve `baseline_score: null` pending
+maintainer review. Site maintainers control registry and scoring UI integration.
+The copied zkGolf utility files retain a provenance notice; no
 upstream license was identified, so this bundle makes no new grant of rights
 for those files. See `THIRD_PARTY_NOTICES.md`.
 

@@ -306,8 +306,15 @@ The range module also builds independently:
 lake build Baseline.ECDSA_P256_Digest.Completeness.Range
 ```
 
-The full cross-validation suite and actual comparator acceptance have not been
-rerun for this completeness milestone.
+On 2026-11-10, `scripts/check.sh` passed in 71.42 seconds, including all 26
+axiom roots, 276 Lean cases, 276 Rust cases, and 262 original-message checks.
+The pinned C++ cross-check passed (200 evaluated cases and 76 byte-envelope
+rejections), as did all four comparator fixtures. The actual submission passed
+the pinned comparator and Lean kernel replay, printing "Your solution is okay!".
+After `lake clean ECDSAGolf`, fresh project verification took 770.94 seconds,
+below the 1200 s limit, with dependency caches retained. Comparison with existing
+project artifacts took 77.59 seconds. These runs use the unsandboxed development
+shim; see [validation](validation.md) for reproduction and scope.
 
 ## Top-Level Assembly
 
@@ -343,7 +350,7 @@ the exact challenge theorem statement, without unfolding the circuit.
 
 ## Remaining Work
 
-Run the full local checks and perform actual comparator acceptance,
-verifier-time, and external cross-validation gates. The targeted submission
-build and persistent axiom audit cover the completed public wrapper and export;
-they do not establish comparator acceptance.
+The full local suite, actual local comparator acceptance, fresh-project
+verifier-time check, and external C++ cross-validation have passed. Production
+sandbox acceptance and cold dependency-build performance remain outside these
+local development-shim checks.
