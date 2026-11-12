@@ -332,7 +332,7 @@ theorem doubleE_cw {p : P3} {n : ℕ} (h1 : Below n p.1) (h2 : Below n p.2.1) (h
   cw_split [doubleE]
   all_goals (apply mul_cw <;> below)
 
-theorem doubleE_out_below (p : P3) (n : ℕ) {m : ℕ} (hm : n + 11 ≤ m) :
+theorem doubleE_out_below (p : P3) (n : ℕ) {m : ℕ} (hm : n + 10 ≤ m) :
     Below m ((doubleE p).output n).1 ∧ Below m ((doubleE p).output n).2.1 ∧
       Below m ((doubleE p).output n).2.2 := by
   obtain ⟨X, Y, Z⟩ := p
@@ -350,12 +350,12 @@ theorem step_cw {acc : P3} {b : Vector E 3} {xs ys : Vector E 6} {n : ℕ}
   · exact doubleE_cw h1 h2 h3
   · exact selectPoint_cw (fun k hk => (hb k hk).mono (by omega))
       (fun i hi => (hx i hi).mono (by omega)) (fun i hi => (hy i hi).mono (by omega))
-  · obtain ⟨d1, d2, d3⟩ := doubleE_out_below acc n (m := n + 11 + 14) (by omega)
-    obtain ⟨s1, s2, s3⟩ := selectPoint_out_below b xs ys (n + 11) (m := n + 11 + 14) (by omega)
+  · obtain ⟨d1, d2, d3⟩ := doubleE_out_below acc n (m := n + 10 + 14) (by omega)
+    obtain ⟨s1, s2, s3⟩ := selectPoint_out_below b xs ys (n + 10) (m := n + 10 + 14) (by omega)
     exact addE_cw d1 d2 d3 s1 s2 s3
 
 theorem step_out_below (acc : P3) (b : Vector E 3) (xs ys : Vector E 6) (n : ℕ) {m : ℕ}
-    (hm : n + 31 ≤ m) : QPBelow m ((step acc b xs ys).output n) := by
+    (hm : n + 30 ≤ m) : QPBelow m ((step acc b xs ys).output n) := by
   simp only [step, Circuit.bind_output_eq, doubleE_len, selectPoint_len]
   exact addE_out_below _ _ _ (by omega)
 
@@ -457,13 +457,16 @@ theorem onCurve_cw {x y : E} {n : ℕ} (hx : Below n x) (_hy : Below n y) :
   cw_split [onCurve]
   all_goals first | cw_leaf | (apply mul_cw <;> below)
 
-theorem assertPoint_cw {q : QPoint} {x y z : E} {n : ℕ} (hq : QPBelow n q) (hx : Below n x)
-    (hy : Below n y) (hz : Below n z) : CWOps n ((assertPoint q x y z).operations n) := by
-  obtain ⟨h1, h2, h3⟩ := hq
-  cw_split [assertPoint, assertQuad_len]
-  · exact assertQuad_cw h1 hx
-  · exact assertQuad_cw (h2.mono (by omega)) (hy.mono (by omega))
-  · exact assertQuad_cw (h3.mono (by omega)) (hz.mono (by omega))
+theorem assertCross_cw {s A u B C D x y z : E} {n : ℕ} (hs : Below n s) (hA : Below n A)
+    (hu : Below n u) (hB : Below n B) (hC : Below n C) (hD : Below n D) :
+    CWOps n ((assertCross s A u B C D x y z).operations n) := by
+  cw_split [assertCross]
+  all_goals first | cw_leaf | (apply mul_cw <;> below)
+
+theorem assertPoint_cw {q : QPoint} {x y z : E} {n : ℕ} (hq : QPBelow n q) (_hx : Below n x)
+    (_hy : Below n y) (_hz : Below n z) : CWOps n ((assertPoint q x y z).operations n) := by
+  rw [assertPoint]
+  exact assertCross_cw hq.1.1 hq.1.2.1 hq.2.2.1 hq.1.2.2.2 hq.2.1.2.1 hq.2.1.2.2.1
 
 @[simp] theorem selectors_len (bi : Vector E 256) (n : ℕ) : (selectors bi).localLength n = 512 := by
   rw [selectors, Circuit.mapFinRange.localLength_eq, bits3_len]
