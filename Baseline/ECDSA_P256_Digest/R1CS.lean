@@ -72,7 +72,7 @@ theorem mux8_output' (b : Vector E 3) (c0 c1 : FF) (t : Vector E 6) (n : ℕ) :
     Affine ((mux8 b c0 c1 t).output n) := Affine.var _
 
 attribute [local irreducible] mul mux mux8 selectPoint addE addAff addTail addG doubleE step bits3
-  pointEq assertPoint assertQuad matQuad matPoint assertFirst onCurve inverse runCheck ltOrder
+  pointEq assertPoint assertCross assertQuad matQuad matPoint assertFirst onCurve inverse runCheck ltOrder
   selectors middle
 
 theorem assertZero_r1cs (e : E) (n : ℕ) :
@@ -237,14 +237,18 @@ theorem pointEq_r1cs {p : P3} {x y : E} (h1 : Affine p.1) (h2 : Affine p.2.1)
   r1cs_split [pointEq]
   all_goals r1cs_leaf
 
+theorem assertCross_r1cs {s A u B C D x y z : E} (hs : Affine s) (hA : Affine A) (hu : Affine u)
+    (hB : Affine B) (hC : Affine C) (hD : Affine D) (hx : Affine x) (hy : Affine y)
+    (hz : Affine z) (n : ℕ) :
+    operationsIsR1CS ((assertCross s A u B C D x y z).operations n) := by
+  r1cs_split [assertCross]
+  all_goals r1cs_leaf
+
 theorem assertPoint_r1cs {q : QPoint} {x y z : E} (hq : QPointAffine q) (hx : Affine x)
     (hy : Affine y) (hz : Affine z) (n : ℕ) :
     operationsIsR1CS ((assertPoint q x y z).operations n) := by
-  obtain ⟨h1, h2, h3⟩ := hq
-  r1cs_split [assertPoint]
-  · exact assertQuad_r1cs h1 hx _
-  · exact assertQuad_r1cs h2 hy _
-  · exact assertQuad_r1cs h3 hz _
+  rw [assertPoint]
+  exact assertCross_r1cs hq.1.1 hq.1.2.1 hq.2.2.1 hq.1.2.2.2 hq.2.1.2.1 hq.2.1.2.2.1 hx hy hz n
 
 theorem assertFirst_r1cs {t : P3} {x y z : E} (h1 : Affine t.1) (h2 : Affine t.2.1)
     (h3 : Affine t.2.2) (hx : Affine x) (hy : Affine y) (hz : Affine z) (n : ℕ) :
