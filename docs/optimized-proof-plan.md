@@ -1,6 +1,11 @@
 # Plan: make the 18,612 circuit the proved submission
 
-Notes written 2026-11-11. Nothing in this plan has been started.
+Notes written 2026-11-11. **Executed 2026-11-12 on branch `optimized-proofs`**: steps 0-11
+are done and every Lean check of `scripts/check.sh` passes. Not run here: the Rust reference
+(no C linker), `check_cpp.py`, `check_comparator.py`, `package.py`. No step needed a retry
+beyond one syntax fix (`dsimp only [CrossShape]` before `subst`, and a redundant last tactic).
+`CrossShape` and its `addTail`/`addE` lemmas ended up in `Soundness/Curve.lean` so that
+`Completeness/Gadgets.lean` can use them without a heavier import.
 
 ## Where things stand
 

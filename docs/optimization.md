@@ -15,20 +15,24 @@ Both changes compute exactly the same polynomials as Longfellow's `doubleE` and
 only on curve points, so exceptional cases and the pointwise relation are
 preserved.
 
-**Status: not applied to the submission.** The submitted circuit in
-[Baseline/…/Circuit.lean](../Baseline/ECDSA_P256_Digest/Circuit.lean) is unchanged.
-The optimized variant lives next to it in the `Optimized` library, which reuses
-every baseline gadget except the two described here:
+**Status: applied to the submission, with soundness and completeness proved.** The
+circuit is [Baseline/…/Circuit.lean](../Baseline/ECDSA_P256_Digest/Circuit.lean). The
+sections below use the names `doubleE10` and `assertPoint5` of the first prototype;
+in the code they are `doubleE` (ten products, with `rootQ`) and `assertPoint`, which
+calls `assertCross`. The 19,630 circuit is tagged `baseline-19630`.
 
 | File | Content |
 | --- | --- |
-| [Circuit.lean](../Optimized/ECDSA_P256_Digest/Circuit.lean) | `rootQ`, `doubleE10`, `assertCross`, and the rewired `step10`, `middle10`, `main10`. |
-| [Cost.lean](../Optimized/ECDSA_P256_Digest/Cost.lean) | `main10Cost : circuitCost main10 ⟨8787, 9825⟩`. |
-| [Soundness.lean](../Optimized/ECDSA_P256_Digest/Soundness.lean) | `rootQ_spec`, `doubleE10_sound`, `assertCross_sound`. |
+| [Circuit.lean](../Baseline/ECDSA_P256_Digest/Circuit.lean) | `rootQ`, `doubleE`, `assertCross`, `assertPoint`. |
+| [Cost.lean](../Baseline/ECDSA_P256_Digest/Cost.lean) | `mainCost : circuitCost main ⟨8787, 9825⟩`. |
+| [Soundness/Curve.lean](../Baseline/ECDSA_P256_Digest/Soundness/Curve.lean) | `rootQ_spec`, `doubleE_sound`, `assertCross_sound`, `CrossShape`, `addE_crossShape`. |
+| [Soundness/Step.lean](../Baseline/ECDSA_P256_Digest/Soundness/Step.lean) | `step_crossShape`; `assertPoint_sound` (needs `CrossShape`), `stepRow_sound`. |
+| [Completeness/Gadgets.lean](../Baseline/ECDSA_P256_Digest/Completeness/Gadgets.lean) | `assertPoint_complete` (needs `CrossShape`). |
 
-Build it with `lake build Optimized`. Only the cost of `main10` and the soundness
-of the two new gadgets are proved; [What remains](#what-remains-to-apply-them)
-lists the obligations still to redo before it can replace the submission.
+The five-product check is only correct for points with the shape `addTail` returns:
+`X = ⟨s, A, −u, B⟩`, `Y = ⟨A, C, D, B⟩`, `Z = ⟨u, C, s, D⟩`. `CrossShape` states this as
+six syntactic equalities between the fields of a `QPoint`; `addE` and `step` outputs
+satisfy it by construction, and both the soundness and completeness proofs use it.
 
 ## Cost Model of One Iteration
 
@@ -219,34 +223,33 @@ Rewiring the loop with `doubleE10` in `step` and `assertCross` in place of
 
 | | Allocations | Constraints | Score |
 | --- | ---: | ---: | ---: |
-| Current circuit | 9,296 | 10,334 | 19,630 |
-| One middle iteration, current | 34 | 37 | 71 |
+| Previous circuit (`baseline-19630`) | 9,296 | 10,334 | 19,630 |
+| One middle iteration, previous | 34 | 37 | 71 |
 | One middle iteration, optimized | 32 | 35 | 67 |
 | Optimized circuit | 8,787 | 9,825 | 18,612 |
 
 The difference is 254 × 4 for the middle iterations plus 2 for the doubling of
-the last iteration. `main10Cost` proves `circuitCost main10 ⟨8787, 9825⟩` with the
+the last iteration. `mainCost` proves `circuitCost main ⟨8787, 9825⟩` with the
 same `count_simp` call as the baseline `mainCost`, with `middle_count` and
 `step_count` replaced by their `⟨254 * 32, 254 * 35⟩` and `⟨30, 30⟩` versions.
 
-## What Remains to Apply Them
+## How the Optimization Was Applied
 
-Only the two gadget lemmas above and the cost theorem have been proved. Making
-`main10` the submission requires:
+The two gadgets replaced their baseline versions in place, so the loop, table, scalar and
+range proofs were reused unchanged:
 
-- **Circuit:** done in `Optimized`. Add `doubleE10`, `assertCross`, `assertPoint5`,
-  `step10`, `middle10` and `main10` to a `seal_gadgets` list for the proof files.
-- **Soundness:** `step_sound` needs `doubleE10_sound` in place of
-  `doubleE_sound`. `stepRow_sound` needs `assertCross_sound` in place of
-  `assertPoint_sound`; the six arguments are read from the `QPoint` fields in the
-  table above, and the three equalities it returns are `evalQP` of that point.
-- **R1CS, Plain, CompWit:** new entries for `doubleE10` and `assertCross`. All
-  rows have the shape "affine − affine × affine", like the current ones.
-- **Completeness:** not started for the current circuit either. Both gadgets are
-  products with direct witness generators, so they fall under C1 of the README.
-- **Cost claim:** update
-  [Cost.lean](../Challenge/Instances/ECDSA_P256_Digest/Cost.lean) to 8,787 and
-  9,825.
+- **Circuit and cost:** `doubleE` and `assertPoint` changed; lengths 11 → 10, 31 → 30,
+  3 → 2 and 34 → 32 for `doubleE`, `step`, `assertPoint` and a middle iteration.
+- **Soundness:** `doubleE_sound` has the same statement, proved with `rootQ_spec`.
+  `assertPoint_sound` gained the `CrossShape` hypothesis; `stepRow_sound` keeps its
+  statement.
+- **R1CS, Plain, CompWit:** new `assertCross_r1cs` and `assertCross_cw`; offsets 11 → 10
+  and 31 → 30 in `step_cw`, `doubleE_out_below` and `step_out_below`.
+- **Completeness:** `assertPoint_complete` takes `CrossShape`; the offsets in
+  `main_constraints_complete` moved from 9191 to 8683, 9224 to 8715 and 9228 to 8719
+  (the loop shrinks by 508 and the last step by 1).
+- **Cost claim:** [Cost.lean](../Challenge/Instances/ECDSA_P256_Digest/Cost.lean) is
+  8,787 and 9,825.
 
 ## Options Examined and Not Retained
 
@@ -277,8 +280,9 @@ One small saving is left unexplored: the four table points each cost 14
 
 - Both identities were tested on random inputs over the P-256 base field with
   exact integer arithmetic.
-- `lake build Optimized` succeeds with no `sorry` and no warnings in the
-  `Optimized` files. `rootQ_spec` and `2 ≠ 0` use
+- `scripts/check.sh` passes its Lean steps on the optimized circuit: full `lake build`,
+  `Tests.Regressions`, `Tests.Axioms` (26 roots within `propext`, `Quot.sound`,
+  `Classical.choice`) and the 276 vector cases. `rootQ_spec` and `2 ≠ 0` use
   `decide +kernel`, as the existing proofs do; no `native_decide` is involved.
-- The full submission (`Solution`, axiom audit, vector suites, comparator) was
-  not rebuilt with the optimized circuit, since the circuit was not changed.
+- Not run on this machine: the Rust reference (no C linker), `check_cpp.py` and
+  `check_comparator.py`.

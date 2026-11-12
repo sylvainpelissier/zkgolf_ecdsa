@@ -18,8 +18,8 @@ some suitable witnesses would not suffice.
 This remains pointwise in the supplied ECDSA witness, including its table and
 intermediate coordinates. It does not replace `ValidEcdsaWitness` by ordinary
 signature validity or introduce an existentially chosen witness. The circuit,
-trusted relation, and proved cost are unchanged: 9,296 witness allocations plus
-10,334 constraints, for a score of 19,630.
+trusted relation, and proved cost are unchanged: 8,787 witness allocations plus
+9,825 constraints, for a score of 18,612.
 
 Sources: [trusted relation](../Challenge/Specs/ECDSAP256.lean),
 [native interface](../Challenge/Instances/ECDSA_P256_Digest/Interface.lean), and

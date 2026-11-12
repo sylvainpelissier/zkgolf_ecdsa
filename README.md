@@ -33,7 +33,7 @@ baseline score; the local submission's proved cost is recorded below. See
 
 The submission module is [`Solution/ECDSA_P256_Digest/Main.lean`](Solution/ECDSA_P256_Digest/Main.lean).
 It re-exports the circuit and proofs in [`Baseline/ECDSA_P256_Digest/`](Baseline/ECDSA_P256_Digest/).
-The circuit's proved cost is 19,630: 9,296 allocations and 10,334 constraints.
+The circuit's proved cost is 18,612: 8,787 allocations and 9,825 constraints.
 All submission obligations are proved. The actual submission passes the pinned
 comparator using its local, unsandboxed development shim.
 
@@ -163,14 +163,15 @@ before changing the accepted relation's implementation. Any cost reduction must
 preserve every supplied-witness check and re-establish the affected proof obligations.
 
 The proved `middle_count` in [Cost.lean](Baseline/ECDSA_P256_Digest/Cost.lean)
-accounts for 8,636 allocations and 9,398 constraints: 18,034 of the 19,630 score
-units, about 92%. These 254 iterations are the main target for future circuit
+accounts for 8,128 allocations and 8,890 constraints: 17,018 of the 18,612 score
+units, about 91%. These 254 iterations are the main target for future circuit
 optimization; this breakdown does not establish that any checks can be removed.
 
-[docs/optimization.md](docs/optimization.md) describes two changes to the loop body,
-that bring the cost to 18,612 without removing any check. They are implemented in
-[`Optimized/`](Optimized/ECDSA_P256_Digest/) with a proved cost and gadget soundness, but
-are not yet the submitted circuit.
+[docs/optimization.md](docs/optimization.md) describes the two changes to the loop body
+that took the cost from 19,630 to 18,612 without removing any check: doubling with ten
+products (`doubleE`) and the `int[i+1]` check with five products (`assertCross`, used by
+`assertPoint`). Both are part of the submitted circuit and of every proof. The previous
+19,630 circuit is tagged `baseline-19630`.
 
 The proof already avoids unrolling the loop through indexed induction and sealed
 gadgets. Retain the bidirectional `loopConstraints_iff_rows` lemma for completeness;

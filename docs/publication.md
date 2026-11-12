@@ -63,7 +63,7 @@ dependencies, and runs the Lean/Rust vectors. The default `lake build` alone doe
 not build the submission. Dependency caches may be reused when checking the
 archive, but project build outputs must be generated from the extracted sources.
 
-The local submission's proved cost is 19,630; this does not establish an official
+The local submission's proved cost is 18,612; this does not establish an official
 baseline score. Site registration should preserve `baseline_score: null` pending
 maintainer review. Site maintainers control registry and scoring UI integration.
 The copied zkGolf utility files retain a provenance notice; no

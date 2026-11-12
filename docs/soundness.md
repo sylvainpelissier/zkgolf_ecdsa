@@ -149,8 +149,10 @@ assembly module and exports `main_soundness` directly instead of a placeholder.
 
 ## Proof Engineering
 
-The circuit and trusted statement were not changed. The score remains 19,630:
-9,296 witness allocations and 10,334 constraints.
+The circuit and trusted statement were not changed. The score is now 18,612
+(8,787 witness allocations and 9,825 constraints); see [optimization.md](optimization.md).
+The loop proofs were adapted to the two optimized gadgets: `assertPoint_sound` takes the
+`CrossShape` hypothesis that `addE` and `step` outputs satisfy.
 
 `seal_gadgets` prevents implicit expansion of large circuits during elaboration.
 Proofs open only the necessary definitions. Restricted simplification keeps

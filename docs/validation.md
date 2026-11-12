@@ -86,8 +86,8 @@ upstream development shim, not a production sandbox. Separately, the actual
 submission passed all seven configured theorem comparisons, both definition
 comparisons, the permitted-axiom policy, and Lean kernel replay.
 
-The local R1CS submission has proved cost 19,630 (9,296 witness allocations and
-10,334 constraints), with all seven submission obligations proved. This does not
+The local R1CS submission has proved cost 18,612 (8,787 witness allocations and
+9,825 constraints), with all seven submission obligations proved. This does not
 set an official challenge baseline score. No proof of the C++ compiler,
 production deployment or full credential protocol is claimed. Contestants must
 prove equivalence to the pinned circuit relation, not completeness for all
