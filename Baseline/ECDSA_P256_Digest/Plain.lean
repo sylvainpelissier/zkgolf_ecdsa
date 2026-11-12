@@ -251,7 +251,7 @@ attribute [local irreducible] matPoint selectPoint addE addAff doubleE bits3 poi
   runCheck assertFirst
 
 theorem assertPoint_plain (q : QPoint) (x y z : E) : PlainCirc (assertPoint q x y z) := by
-  unfold assertPoint; plain [assertQuad_plain]
+  unfold assertPoint assertCross; plain [mul_plain]
 theorem step_plain (acc : P3) (b : Vector E 3) (xs ys : Vector E 6) :
     PlainCirc (step acc b xs ys) := by
   unfold step; plain [doubleE_plain, selectPoint_plain, addE_plain]
