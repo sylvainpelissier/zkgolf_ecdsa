@@ -29,7 +29,7 @@ theorem table_inputs {env : Environment FF} {inputVar : Var Input FF} {input : I
 
 private theorem middle_len (input : Var Input FF) (bits : Vector (Vector E 3) 256)
     (xs ys : Vector E 6) (offset : ℕ) :
-    (middle input bits xs ys).localLength offset = 8636 := by
+    (middle input bits xs ys).localLength offset = 8128 := by
   rw [middle, Circuit.forEach.localLength_eq]
   simp only [Circuit.bind_localLength_eq, step_len, assertPoint_len]
 
@@ -86,7 +86,7 @@ theorem main_constraints_complete {env : ProverEnvironment FF}
       exact hnativeLoop.1)
   simp only [completeness_bind, selectPoint_len, Nat.add_assoc, Nat.reduceAdd] at hloop
   have hlast := loopResult_complete (env := env) hin
-    (offset := offset + 9191)
+    (offset := offset + 8683)
     (by simpa only [Circuit.ConstraintsHold.bind_usesLocalWitnesses,
           step_len, assertQuad_len, Nat.add_assoc, Nat.reduceAdd]
           using And.intro wStep (And.intro wLastX wLastZ))
@@ -97,8 +97,8 @@ theorem main_constraints_complete {env : ProverEnvironment FF}
     Nat.add_assoc, Nat.reduceAdd] at hlast
   have hscalarRows :=
     scalar_reconstruction_complete (env := env)
-      (digestOffset := offset + 9224) (rOffset := offset + 9224)
-      (inverseOffset := offset + 9228) hin hbits hselector hscalarSpec wRangeR wRangeS
+      (digestOffset := offset + 8715) (rOffset := offset + 8715)
+      (inverseOffset := offset + 8719) hin hbits hselector hscalarSpec wRangeR wRangeS
   refine ⟨htable.1.1, htable.1.2, htable.2.1.1, htable.2.1.2,
     htable.2.2.1.1, htable.2.2.1.2.1, htable.2.2.1.2.2,
     htable.2.2.2.1, htable.2.2.2.2, hSelectors,

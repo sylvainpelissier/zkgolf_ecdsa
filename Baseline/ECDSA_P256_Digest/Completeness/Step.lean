@@ -51,7 +51,7 @@ theorem stepRow_complete {env : ProverEnvironment FF} {acc : P3} {bits : Vector 
   rw [Circuit.ConstraintsHold.bind_usesLocalWitnesses] at hwitness
   rw [completeness_bind]
   have hstep := step_complete hwitness.1
-  refine ⟨hstep, assertPoint_complete hwitness.2 ?_⟩
+  refine ⟨hstep, assertPoint_complete (step_crossShape _ _ _ _ _) hwitness.2 ?_⟩
   rw [step_sound ((step_plain acc bits xs ys).ops offset |>.completeness_iff_soundness.mp hstep)
     (hbits 0) (hbits 1) (hbits 2)]
   exact htransition

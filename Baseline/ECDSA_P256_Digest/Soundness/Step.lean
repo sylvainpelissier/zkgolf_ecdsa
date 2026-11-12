@@ -77,24 +77,6 @@ theorem assertQuad_sound {env : Environment FF} {q : Quad} {t : E} {n : ℕ}
   rw [← h0]
   linear_combination -h1
 
-/-- The six forms shared by the three coordinates of an `addTail` point:
-`X = ⟨s, A, -u, B⟩`, `Y = ⟨A, C, D, B⟩`, `Z = ⟨u, C, s, D⟩`. `assertPoint` checks a point
-of this shape with five products (`assertCross`). -/
-def CrossShape (q : QPoint) : Prop :=
-  q.1.c = -q.2.2.a ∧ q.2.1.a = q.1.b ∧ q.2.1.d = q.1.d ∧
-    q.2.2.b = q.2.1.b ∧ q.2.2.c = q.1.a ∧ q.2.2.d = q.2.1.c
-
-theorem addTail_crossShape (t0 t1 t2 t3 t4_2 t5_2 : E) :
-    CrossShape (addTail t0 t1 t2 t3 t4_2 t5_2) := by
-  unfold CrossShape addTail
-  exact ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩
-
-theorem addE_crossShape (p1 p2 : P3) (n : ℕ) : CrossShape ((addE p1 p2).output n) := by
-  obtain ⟨X1, Y1, Z1⟩ := p1
-  obtain ⟨X2, Y2, Z2⟩ := p2
-  simp only [addE, Circuit.bind_output_eq, Circuit.pure_output_eq]
-  exact addTail_crossShape _ _ _ _ _ _
-
 theorem step_crossShape (acc : P3) (b : Vector E 3) (xs ys : Vector E 6) (n : ℕ) :
     CrossShape ((step acc b xs ys).output n) := by
   simp only [step, Circuit.bind_output_eq]

@@ -152,19 +152,30 @@ theorem pointEq_complete {env : ProverEnvironment FF} {point : P3} {x y : E} {of
     ConstraintsHold.Completeness env ((pointEq point x y).operations offset) := by
   simpa only [pointEq, circuit_norm, sub_eq_zero, IsPointEquality, evalP] using heq
 
-/-- Exact agreement with a pending quadratic point satisfies its three coordinate assertions. -/
+/-- Exact agreement with a pending point of `CrossShape` satisfies the five-product check:
+the two generated products satisfy their rows and the three assertions follow from the
+coordinate equalities. -/
 theorem assertPoint_complete {env : ProverEnvironment FF} {point : QPoint} {x y z : E}
     {offset : ℕ}
+    (hq : CrossShape point)
     (hwitness : env.UsesLocalWitnessesCompleteness offset
       ((assertPoint point x y z).operations offset))
     (heq : evalQP env point =
       ⟨Expression.eval env x, Expression.eval env y, Expression.eval env z⟩) :
     ConstraintsHold.Completeness env ((assertPoint point x y z).operations offset) := by
-  simp only [assertPoint, Circuit.ConstraintsHold.bind_usesLocalWitnesses] at hwitness
-  simp only [assertPoint, completeness_bind]
-  obtain ⟨hwitnessX, hwitnessY, hwitnessZ⟩ := hwitness
+  obtain ⟨⟨a1, b1, c1, d1⟩, ⟨a2, b2, c2, d2⟩, ⟨a3, b3, c3, d3⟩⟩ := point
+  dsimp only [CrossShape] at hq
+  obtain ⟨rfl, rfl, rfl, rfl, rfl, rfl⟩ := hq
   have hcoords := ProjectivePoint.mk.inj heq
-  exact ⟨assertQuad_complete hwitnessX hcoords.1,
-    assertQuad_complete hwitnessY hcoords.2.1, assertQuad_complete hwitnessZ hcoords.2.2⟩
+  simp only [evalQuad, circuit_norm] at hcoords
+  obtain ⟨hx, hy, hz⟩ := hcoords
+  simp only [assertPoint, assertCross, mul, circuit_norm] at hwitness ⊢
+  obtain ⟨hp1, hp3⟩ := hwitness
+  refine ⟨?_, ?_, ?_, ?_, ?_⟩
+  · linear_combination hp1
+  · linear_combination hp3
+  · linear_combination hp1 - 2 * hz
+  · linear_combination hp3 - 2 * hy
+  · linear_combination -hp1 - hp3 - hx + hy + hz
 
 end Baseline.ECDSA_P256_Digest
