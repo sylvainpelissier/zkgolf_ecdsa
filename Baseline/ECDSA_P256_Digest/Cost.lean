@@ -2,7 +2,7 @@ import Baseline.ECDSA_P256_Digest.Circuit
 import Challenge.Utils.CostR1CS
 
 /-!
-Exact allocation/constraint count of the baseline circuit (`mainCost`).
+Exact allocation/constraint count of the circuit circuit (`mainCost`).
 
 Each gadget gets an `operationCount` lemma at an arbitrary offset; composites are
 counted by rewriting their `do`-blocks with these lemmas and the bind/append laws.
@@ -42,9 +42,13 @@ theorem runCheck_count (bits : Vector (Vector E 3) 256) (k : Fin 3) (r : ℕ × 
 theorem matPoint_count (q : QPoint) (n : ℕ) : operationCount ((matPoint q).operations n) = ⟨6, 6⟩ := by
   count_simp [matPoint, matQuad_count]; rfl
 
+theorem assertCross_count (s A u B C D x y z : E) (n : ℕ) :
+    operationCount ((assertCross s A u B C D x y z).operations n) = ⟨2, 5⟩ := by
+  count_simp [assertCross, mul_count, assertZero_count]; rfl
+
 theorem assertPoint_count (q : QPoint) (x y z : E) (n : ℕ) :
-    operationCount ((assertPoint q x y z).operations n) = ⟨3, 6⟩ := by
-  count_simp [assertPoint, assertQuad_count]; rfl
+    operationCount ((assertPoint q x y z).operations n) = ⟨2, 5⟩ :=
+  assertCross_count _ _ _ _ _ _ _ _ _ n
 
 theorem mux8_count (b : Vector E 3) (c0 c1 : FF) (t : Vector E 6) (n : ℕ) :
     operationCount ((mux8 b c0 c1 t).operations n) = ⟨6, 6⟩ := by
@@ -62,12 +66,12 @@ theorem addE_count (p1 p2 : P3) (n : ℕ) : operationCount ((addE p1 p2).operati
 theorem addAff_count (p q : E × E) (n : ℕ) : operationCount ((addAff p q).operations n) = ⟨5, 5⟩ := by
   count_simp [addAff, mul_count]; rfl
 
-theorem doubleE_count (p : P3) (n : ℕ) : operationCount ((doubleE p).operations n) = ⟨11, 11⟩ := by
+theorem doubleE_count (p : P3) (n : ℕ) : operationCount ((doubleE p).operations n) = ⟨10, 10⟩ := by
   obtain ⟨X, Y, Z⟩ := p
   count_simp [doubleE, mul_count]; rfl
 
 theorem step_count (acc : P3) (b : Vector E 3) (xs ys : Vector E 6) (n : ℕ) :
-    operationCount ((step acc b xs ys).operations n) = ⟨31, 31⟩ := by
+    operationCount ((step acc b xs ys).operations n) = ⟨30, 30⟩ := by
   count_simp [step, doubleE_count, selectPoint_count, addE_count]; rfl
 
 theorem selectors_count (bi : Vector E 256) (n : ℕ) :
@@ -75,18 +79,18 @@ theorem selectors_count (bi : Vector E 256) (n : ℕ) :
   CostIs.mapFinRange (K := ⟨2, 3⟩) (fun _ n => bits3_count _ n) n
 
 theorem middle_count (input : Var Input FF) (bits : Vector (Vector E 3) 256) (xs ys : Vector E 6)
-    (n : ℕ) : operationCount ((middle input bits xs ys).operations n) = ⟨254 * 34, 254 * 37⟩ :=
-  CostIs.forEach (K := ⟨34, 37⟩)
+    (n : ℕ) : operationCount ((middle input bits xs ys).operations n) = ⟨254 * 32, 254 * 35⟩ :=
+  CostIs.forEach (K := ⟨32, 35⟩)
     (fun i n => by count_simp [step_count, assertPoint_count]; rfl) n
 
 theorem ltOrder_count (bits : Vector (Vector E 3) 256) (k : Fin 3) (n : ℕ) :
     operationCount ((ltOrder bits k).operations n) = ⟨34, 34⟩ :=
   CostIs.forEach (K := ⟨1, 1⟩) (fun r n => runCheck_count bits k r n) n
 
-/-- Additional witness allocations of the baseline (inputs excluded). -/
-@[reducible] def allocations : ℕ := 9296
-/-- R1CS constraint rows of the baseline. -/
-@[reducible] def constraints : ℕ := 10334
+/-- Additional witness allocations of the circuit (inputs excluded). -/
+@[reducible] def allocations : ℕ := 8787
+/-- R1CS constraint rows of the circuit. -/
+@[reducible] def constraints : ℕ := 9825
 
 theorem mainCost : circuitCost main ⟨allocations, constraints⟩ := by
   intro input n

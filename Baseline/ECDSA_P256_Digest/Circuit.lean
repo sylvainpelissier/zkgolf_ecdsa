@@ -157,39 +157,28 @@ def addG (q : E × E) : QPoint :=
   addTail (.const gx * q.1) (.const gy * q.2) 1 (.const (gx + gy) * (q.1 + q.2))
     (.const (gx + 1) * (q.1 + 1)) (.const (gy + 1) * (q.2 + 1))
 
-/-- Renes–Costello–Batten doubling, mirroring `doubleE`. -/
+/-- A root of `x² - b·x + 1` (`b² - 4` is a square mod `p`); the other root is `b - rootQ`. -/
+def rootQ : FF := 0x4182bb812ad155e06a819184a30de4bedadfae3bfdf3af1c6e7091055ce9741b
+
+/-- RCB doubling (`doubleE`, `a = -3`) with ten products. With `Q = X² - bXZ + Z²`:
+`Y3 = (Y² - 3Q)(Y² + 3Q) + 9(b² - 4)·(XZ - Z²)(XZ + Z²)`, `Z3 = 8·YZ·Y²`,
+`X3 = 2·(XY - r·YZ)(Y² + 9XZ - 9r'Z²) + 2r·YZ·Y²` for the roots `r, r'` of `x² - bx + 1`.
+It computes exactly the polynomials of Longfellow's `doubleE` (see `doubleE_sound`). -/
 def doubleE (p : P3) : Circuit FF P3 := do
   let (X, Y, Z) := p
-  let a : E := .const curveA
-  let k3b : E := .const k3b
-  let t0 ← mul X X
-  let t1 ← mul Y Y
-  let t2 ← mul Z Z
-  let t3 ← mul X Y
-  let t3_2 := t3 + t3
-  let Z3t ← mul X Z
-  let Z3t_2 := Z3t + Z3t
-  let X3t := a * Z3t_2
-  let Y3t := k3b * t2
-  let Y3t_2 := X3t + Y3t
-  let X3t_2 := t1 - Y3t_2
-  let Y3t_3 := t1 + Y3t_2
-  let Y3t_4 ← mul X3t_2 Y3t_3
-  let X3t_3 ← mul t3_2 X3t_2
-  let Z3t_3 := k3b * Z3t_2
-  let t2_2 := a * t2
-  let t3_3 := t0 - t2_2
-  let t3_4 := a * t3_3
-  let t3_5 := t3_4 + Z3t_3
-  let t0_3 := t0 + t0 + t0 + t2_2
-  let t0_4 ← mul t0_3 t3_5
-  let Y3t_5 := Y3t_4 + t0_4
-  let t2_3 ← mul Y Z
-  let t2_4 := t2_3 + t2_3
-  let t0_5 ← mul t2_4 t3_5
-  let X3t_4 := X3t_3 - t0_5
-  let Z3t_5 ← mul t2_4 t1
-  return (X3t_4, Y3t_5, (4 : E) * Z3t_5)
+  let xx ← mul X X
+  let yy ← mul Y Y
+  let zz ← mul Z Z
+  let xy ← mul X Y
+  let xz ← mul X Z
+  let yz ← mul Y Z
+  let q : E := xx - .const curveB * xz + zz
+  let p1 ← mul (yy - (3 : E) * q) (yy + (3 : E) * q)
+  let p2 ← mul (xz - zz) (xz + zz)
+  let p3 ← mul (xy - .const rootQ * yz) (yy + (9 : E) * xz - .const (9 * (curveB - rootQ)) * zz)
+  let p4 ← mul yz yy
+  return ((2 : E) * p3 + .const (2 * rootQ) * p4, p1 + .const (9 * (curveB * curveB - 4)) * p2,
+    (8 : E) * p4)
 
 /-- Boolean decomposition `v = b0 + 2 b1 + 4 b2`, enforcing `v ∈ 0..7`; `b2` is derived. -/
 def bits3 (v : E) : Circuit FF (Vector E 3) := do
@@ -252,10 +241,19 @@ def step (acc : P3) (b : Vector E 3) (xs ys : Vector E 6) : Circuit FF QPoint :=
   let t ← selectPoint b xs ys
   addE d t
 
-def assertPoint (q : QPoint) (x y z : E) : Circuit FF Unit := do
-  assertQuad q.1 x
-  assertQuad q.2.1 y
-  assertQuad q.2.2 z
+/-- `(x, y, z) = (s·A - u·B, A·C + D·B, u·C + s·D)`. These three forms are a 3D cross
+product, of bilinear rank 5: two products get a witness, three stay in their rows. -/
+def assertCross (s A u B C D : E) (x y z : E) : Circuit FF Unit := do
+  let p1 ← mul (s + C) (-u - D)
+  let p3 ← mul (C - B) (D - A)
+  assertZero (((2 : E) * z + p1) - (s - C) * (D - u))
+  assertZero (((2 : E) * y + p3) - (C + B) * (D + A))
+  assertZero ((x - y - z - p1 - p3) - (s - B) * (A + u))
+
+/-- The pending point equals `(x, y, z)`, through `assertCross` on the six shared forms of
+`addTail` (`q` must have the `addTail` shape, see `CrossShape`). -/
+def assertPoint (q : QPoint) (x y z : E) : Circuit FF Unit :=
+  assertCross q.1.a q.1.b q.2.2.a q.1.d q.2.1.b q.2.1.c x y z
 
 /-- First iteration: `addE (0,1,0) t = (t.x·t.y, t.y², t.y·t.z)` exactly. -/
 def assertFirst (t : P3) (x y z : E) : Circuit FF Unit := do
@@ -285,17 +283,21 @@ theorem addE_len (p1 p2 : P3) (n : ℕ) : (addE p1 p2).localLength n = 6 := by
   obtain ⟨X2, Y2, Z2⟩ := p2
   simp [addE, bind_localLength_eq, map_localLength_eq, mul_len]
 
-theorem doubleE_len (p : P3) (n : ℕ) : (doubleE p).localLength n = 11 := by
+theorem doubleE_len (p : P3) (n : ℕ) : (doubleE p).localLength n = 10 := by
   obtain ⟨X, Y, Z⟩ := p
   simp [doubleE, bind_localLength_eq, map_localLength_eq, mul_len]
 
 theorem step_len (acc : P3) (b : Vector E 3) (xs ys : Vector E 6) (n : ℕ) :
-    (step acc b xs ys).localLength n = 31 := by
+    (step acc b xs ys).localLength n = 30 := by
   simp [step, bind_localLength_eq, doubleE_len, selectPoint_len, addE_len]
 
+theorem assertCross_len (s A u B C D x y z : E) (n : ℕ) :
+    (assertCross s A u B C D x y z).localLength n = 2 := by
+  simp [assertCross, mul_len, circuit_norm]
+
 theorem assertPoint_len (q : QPoint) (x y z : E) (n : ℕ) :
-    (assertPoint q x y z).localLength n = 3 := by
-  simp [assertPoint, bind_localLength_eq, assertQuad_len]
+    (assertPoint q x y z).localLength n = 2 :=
+  assertCross_len _ _ _ _ _ _ _ _ _ n
 
 end Lengths
 
@@ -306,7 +308,7 @@ def middle (input : Var Input FF) (bits : Vector (Vector E 3) 256) (xs ys : Vect
     let acc : P3 := (input.intX[i], input.intY[i], input.intZ[i])
     let next ← step acc bits[i.val + 1] xs ys
     assertPoint next input.intX[i.val + 1] input.intY[i.val + 1] input.intZ[i.val + 1])
-    ⟨34, fun _ _ => by simp [Circuit.bind_localLength_eq, step_len, assertPoint_len]⟩
+    ⟨32, fun _ _ => by simp [Circuit.bind_localLength_eq, step_len, assertPoint_len]⟩
 
 def main (input : Var Input FF) : Circuit FF (Var Output FF) := do
   let PK : E × E := (input.pkX, input.pkY)

@@ -28,5 +28,6 @@ macro "seal_gadgets" : command => `(
     Baseline.ECDSA_P256_Digest.runSum Baseline.ECDSA_P256_Digest.runCheck
     Baseline.ECDSA_P256_Digest.ltOrder Baseline.ECDSA_P256_Digest.selectors
     Baseline.ECDSA_P256_Digest.step Baseline.ECDSA_P256_Digest.assertPoint
+    Baseline.ECDSA_P256_Digest.assertCross
     Baseline.ECDSA_P256_Digest.assertFirst Baseline.ECDSA_P256_Digest.middle
     Baseline.ECDSA_P256_Digest.main)

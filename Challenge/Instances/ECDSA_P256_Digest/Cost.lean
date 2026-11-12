@@ -1,3 +1,3 @@
-/- Submitted cost claim: the `baseline-sylvain` circuit (score 19,630). -/
-@[reducible] def Solution.ECDSA_P256_Digest.allocations : Nat := 9296
-@[reducible] def Solution.ECDSA_P256_Digest.constraints : Nat := 10334
+/- Submitted cost claim: the optimized `baseline-sylvain` circuit (score 18,612). -/
+@[reducible] def Solution.ECDSA_P256_Digest.allocations : Nat := 8787
+@[reducible] def Solution.ECDSA_P256_Digest.constraints : Nat := 9825
